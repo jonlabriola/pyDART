@@ -1,10 +1,7 @@
 import numpy as np
 import argparse
-import os
-import interp,fwdop
+import interp,fwdop,inout
 from netCDF4 import Dataset
-import matplotlib
-import matplotlib.pyplot as plt
 import plotting
 
 #--- These Values Only once an Experiment and can therfore be changed manually to avoid mistakes
@@ -12,58 +9,42 @@ import plotting
 #---- Static Parameters Throughout DA ----#
 
 case_type = 'idealized' #-- Either Idealized (i.e., create your own observations) or Real (i.e., read observation from file)
-if case_type == 'idealized': #--- Must Explicitly List All Parameters
-   locx = [30000,250000,75000]  #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
-   locy = [30000,250000,75000]  #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
-   hgt  = [415,0.0,0.0]         #--- The height of the radar station of sea level (JDL Working on This)
-   tilts = np.radians(np.array([0.5, 0.9, 1.3, 1.8, 2.4, 3.1, 4.0, 5.1, 6.4, 8.0, 10.0, 12.5, 15.6, 19.5])) #--- NEXRAD Tilts
-   #tilts = np.radians(np.array([0.5]))
-   case_type = 'idealized' #-- Real Date or Idealized
-   var=['vr','refl'] # The Observations to extract
-   clearair_dbz = 10.
-   missing = -999.
-   vr_error = 4.0
-   dbz_error = 6.0
-   #clear_thin = 6 #--- The number of grid points to skip 
-   #storm_thin = 3
-   smoothing = True #--- Perform cressman filter on output'
+if case_type == 'idealized':     #--- Must Explicitly List All Parameters
+   locx = [30000,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
+   locy = [30000,250000,75000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
+   hgt  = [415,0.0,0.0]          #--- The height of the radar station of sea level (JDL Working on This)
+   tilts = np.radians(np.array([0.5, 0.9, 1.3, 1.8, 2.4, 3.1, 
+           4.0, 5.1, 6.4, 8.0, 10.0, 12.5, 15.6, 19.5])) #--- NEXRAD Tilts
+   case_type = 'idealized'       #-- Real Date or Idealized
+   clearair_dbz = 10.            #--- Threshold for clear air observations
+   missing = -999.               #--- Value of Missing Observation
+   vr_error = 4.0                #--- Vr Error (m/s)
+   dbz_error = 6.0               #--- dBZ Error (dBZ)
 else:  #--- A Real-Data Case
    print('Work on this at a later time')
 
 
 #--- Superobbing Information
-superobs = True #---> If True Apply Cressman Filter
-new_grid = 5000. #---> New Horizontal Grid Spacing
-influence_rad = 6000. #--- Cressman Function influence radius
+superobs = True        #--- If True Apply Cressman Filter
+new_grid = 5000.       #--- New Horizontal Grid Spacing
+influence_rad = 6000.  #--- Cressman Function influence radius
+
+#--- Thinning Observations (Need To Update if Desired)
+#clear_thin = 6    #--- The number of grid points to skip where Z < clearir_dbz
+#storm_thin = 3    #--- The number of grid points to skip where Z > clearair_dbz
 
 #--- Argparse provides file name
 parser = argparse.ArgumentParser()
 parser.add_argument("obs_path", type=str,            help = 'The location of the radar observation file')
 arguments = parser.parse_args()
 
+#=================================#
+#       Start Working Code        #
+#=================================#
 
 #--- Step 1: Grab Model Data (Currently CM1)
-mem = {}
-dumpfile = Dataset(arguments.obs_path,"r",fortmat="NETCDF4")
 varname = ['ua','va','wa','dbz','rho','xh','yh','zh']
-for var in varname:
-   if var in ['xh','yh','zh']:
-      var_tmp = np.squeeze(dumpfile.variables[var][:])
-   elif var in ['ua']:
-      var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),2)
-   elif var in ['va']:
-      var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),1)
-   elif var in ['wa']:
-      var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),0)
-   else:
-       var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
-   mem[var] = var_tmp
-mem['dy'] = mem['yh'][1]- mem['yh'][0]
-mem['ny'] = mem['yh'].shape[0]
-mem['dx'] = mem['xh'][1]- mem['xh'][0]
-mem['nx'] = mem['xh'].shape[0]
-mem['nz'] = mem['zh'].shape[0]
-
+mem = inout.read_cm1(arguments.obs_path,varname)
 
 #--- Observation Location Info
 nrdr = len(locx)
@@ -184,11 +165,9 @@ else:
 wrtfile.createDimension('tilts', ntilt)
 wrtfile.createDimension('radars', nrdr)
 
-#wrtfile.variables['tilts'], 'f4', ('tilts'))
 for key in rdrobs.keys():
    wrtfile.createVariable(key, 'f4', ('radars','tilts','yh','xh'))
    wrtfile.variables[key][:,:,:,:] = rdrobs[key][:,:,:,:]
-   
    if key in ['dbz','dbzerr']:
       wrtfile.variables[key].units = 'dBZ'
    elif key in ['vr','vrerr']:
