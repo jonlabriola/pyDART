@@ -22,10 +22,10 @@ def dll_2_dxy(lat1, lat2, lon1, lon2, degrees=False, azimuth=False, proj = map_p
   """
 
   if degrees:
-    rlon1 = N.deg2rad(lon1)
-    rlon2 = N.deg2rad(lon2)
-    rlat1 = N.deg2rad(lat1)
-    rlat2 = N.deg2rad(lat2)
+    rlon1 = np.deg2rad(lon1)
+    rlon2 = np.deg2rad(lon2)
+    rlat1 = np.deg2rad(lat1)
+    rlat2 = np.deg2rad(lat2)
   else:
     rlon1 = lon1
     rlon2 = lon2
@@ -36,7 +36,7 @@ def dll_2_dxy(lat1, lat2, lon1, lon2, degrees=False, azimuth=False, proj = map_p
 
   if proj == 'latlon':
     rearth  = 1000.0 * 6367.0
-    x       = rearth * N.cos(0.5*(rlat1+rlat2)) * (rlon2-rlon1)
+    x       = rearth * np.cos(0.5*(rlat1+rlat2)) * (rlon2-rlon1)
     y       = rearth * (rlat2-rlat1)
 
 # Lambert Conformal
@@ -46,9 +46,9 @@ def dll_2_dxy(lat1, lat2, lon1, lon2, degrees=False, azimuth=False, proj = map_p
     x, y = p1(lon2, lat2, errchk = True)
 
   if azimuth:
-    ay = N.sin(rlon2-rlon1)*N.cos(rlat2)
-    ax = N.cos(rlat1)*N.sin(rlat2)-N.sin(rlat1)*N.cos(rlat2)*N.cos(rlon2-rlon1)
-    az = N.degrees(N.arctan2(ay,ax))
+    ay = np.sin(rlon2-rlon1)*np.cos(rlat2)
+    ax = np.cos(rlat1)*np.sin(rlat2)-np.sin(rlat1)*np.cos(rlat2)*np.cos(rlon2-rlon1)
+    az = np.degrees(np.arctan2(ay,ax))
     return x, y, az
 
   return x, y
@@ -75,8 +75,8 @@ def dxy_2_dll(x, y, lat1, lon1, degrees=True, proj = map_projection):
   """
 
   if degrees:
-    rlon1 = N.deg2rad(lon1)
-    rlat1 = N.deg2rad(lat1)
+    rlon1 = np.deg2rad(lon1)
+    rlat1 = np.deg2rad(lat1)
   else:
     rlon1 = lon1
     rlat1 = lat1
@@ -86,8 +86,8 @@ def dxy_2_dll(x, y, lat1, lon1, degrees=True, proj = map_projection):
   if proj == 'latlon':
     rearth = 1000.0 * 6367.0
     rlat2  = rlat1 + y / rearth
-    lon    = N.rad2deg(rlon1 + x / ( rearth * N.cos(0.5*(rlat1+rlat1)) ) )
-    lat    = N.rad2deg(rlat2)
+    lon    = np.rad2deg(rlon1 + x / ( rearth * np.cos(0.5*(rlat1+rlat1)) ) )
+    lat    = np.rad2deg(rlat2)
 
 # Lambert Conformal
 
@@ -96,7 +96,7 @@ def dxy_2_dll(x, y, lat1, lon1, degrees=True, proj = map_projection):
     lon, lat = p1(x, y, inverse = True)
 
   if degrees == False:
-    return N.deg2rad(lat), N.deg2rad(lon)
+    return np.deg2rad(lat), np.deg2rad(lon)
   else:
     return lat, lon
 #=================================================================
@@ -141,15 +141,13 @@ def beam_elv(sfc_range, z):
         hgtdb = frthrde + z
         rngdb = sfc_range/frthrde
 
-        elvrad = N.arctan((hgtdb*N.cos(rngdb) - frthrde)/(hgtdb * N.sin(rngdb)))
+        elvrad = np.arctan((hgtdb*np.cos(rngdb) - frthrde)/(hgtdb * np.sin(rngdb)))
 
-        return N.rad2deg(elvrad)
+        return np.rad2deg(elvrad)
 
     else:
 
         return -999.
-#===============================================================================
-
 #===============================================================================
 def interp_wghts(x, xc, extrapolate=False):
   """interp_weights returs the linear interpolation weights for a given
@@ -318,14 +316,12 @@ def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
 
    This routine can also be implemented in FORTRAN much quicker...
    """
-   import numpy as np
    # Create distance array
 
    nobs = np.size(y0)
    new_ob = np.zeros((nobs))
+   R2    = roi**2.0
    for ob in  range(0,nobs):
-     #if ob%1000 == 0:
-     #   print('Working on observation =',ob)
      if np.isnan(x0[ob]): continue
      dis = np.sqrt( (x-x0[ob])**2 + (y-y0[ob])**2 )
      # Cut the size o n by choosing a smart threshold (2 km)
@@ -334,36 +330,19 @@ def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
      size = np.size(indices)
      # go thru values w/in radius: calculate weight, mult by value and sum also sum weights
      if size != 0:
-       R2    = roi**2.0
        w_sum = 0.0
        top   = 0.0
        rk2 = dis[indices]**2.
        wk = (R2-rk2)/(R2+rk2)
        w_sum = np.sum(wk)
-       #--- First Observation Called 
        top = np.sum(wk*obs[indices])
        if w_sum < 0.01:
           new_ob[ob] = missing      
        else:
           new_ob[ob] = top/w_sum
-
-
      else:  #if there are no values assign the data point a NaN
        new_ob[ob] = np.nan
    return new_ob
-#     for n, value in enumerate(dis[indices]):
-#        rk2 = value**2.0
-#        wk = (R2-rk2) / (R2+rk2)
-#        top = top + wk*obs[n]
-#        w_sum = w_sum + wk
-#       print n, value, data[n], R2, w_sum, top
-#
-#    if w_sum < 0.01:
-#      return missing
-#    else:
-#      return top/w_sum
-#
-#  else:
-#    return missing
+
 #===============================================================================
 

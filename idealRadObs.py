@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 import os
-import location,fwdop
+import interp,fwdop
 from netCDF4 import Dataset
 import matplotlib
 import matplotlib.pyplot as plt
@@ -50,11 +50,11 @@ for var in varname:
    if var in ['xh','yh','zh']:
       var_tmp = np.squeeze(dumpfile.variables[var][:])
    elif var in ['ua']:
-      var_tmp = location.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),2)
+      var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),2)
    elif var in ['va']:
-      var_tmp = location.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),1)
+      var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),1)
    elif var in ['wa']:
-      var_tmp = location.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),0)
+      var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),0)
    else:
        var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
    mem[var] = var_tmp
@@ -100,7 +100,7 @@ for rdr in range(0,nrdr):
    for rtilt,radtilt in enumerate(tilts):
       tmpob = {}
       #--- Step 2: Calculate Radar Observation Locations for Tilts
-      tmpob['x'],tmpob['y'],tmpob['z'],tmpob['elv'],tmpob['az'] = location.rad_obs_loc(mem,locx[rdr],locy[rdr],hgt[rdr],radtilt)
+      tmpob['x'],tmpob['y'],tmpob['z'],tmpob['elv'],tmpob['az'] = interp.rad_obs_loc(mem,locx[rdr],locy[rdr],hgt[rdr],radtilt)
 
       #--- Step 3: Call Forward Operator
       obtype = np.zeros((np.size(tmpob['x'])))
@@ -133,10 +133,10 @@ for rdr in range(0,nrdr):
 
          #--- Cressman Filter #--- JDL Need to check the cressman function is not complete
          print('Applying Cressman Filter to dBZ')
-         tmpob['dbz'] = location.cressman(fine_x,fine_y,fine_dbz,tmpob['x'],tmpob['y'],influence_rad)
+         tmpob['dbz'] = interp.cressman(fine_x,fine_y,fine_dbz,tmpob['x'],tmpob['y'],influence_rad)
 
          print('Applying Cressman Filter to Vr')
-         tmpob['vr'] = location.cressman(fine_x,fine_y,fine_vr,tmpob['x'],tmpob['y'],influence_rad)
+         tmpob['vr'] = interp.cressman(fine_x,fine_y,fine_vr,tmpob['x'],tmpob['y'],influence_rad)
      
 
       #--- Conduct Test Plot

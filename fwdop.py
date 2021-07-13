@@ -1,6 +1,6 @@
 #--- Code for Forward Operators Used to Calculate Observations
-import location
-import numpy as N
+import interp
+import numpy as np
 import math
 
 #ens_default_cmap = P.get_cmap('seismic')
@@ -34,13 +34,13 @@ def calcHx(fcst, kind, yloc, xloc, height, elev, azimuth,
                      vr obs accordingly                      [float] 
     
   """
-  nobs = N.size(kind) 
+  nobs = np.size(kind) 
 
   if missing == None:
     missing = _missing
 
-  Hx_vr = missing * N.ones([nobs])
-  Hx_Z  = missing * N.ones([nobs])
+  Hx_vr = missing * np.ones([nobs])
+  Hx_Z  = missing * np.ones([nobs])
   if cartesian: #--- x/y/z coordinates
      yloc = yloc
      xloc = xloc
@@ -53,13 +53,13 @@ def calcHx(fcst, kind, yloc, xloc, height, elev, azimuth,
      mylocs = fcst['yh']
      mhgts = fcst['zh']
 
-     print(' calcHx:  OBS   LAT MIN/MAX:  ', yloc.min(), yloc.max())
-     print(' calcHx:  MODEL LAT MIN/MAX:  ', mylocs.min(), mylocs.max())
-     print(' calcHx:  OBS   LON MIN/MAX:  ', xloc.min(), xloc.max())
-     print(' calcHx:  MODEL LON MIN/MAX:  ', mxlocs.min(), mxlocs.max())
+     print(' calcHx:  OBS   Y-DIS MIN/MAX:  ', np.nanmin(yloc),   np.nanmax(yloc))
+     print(' calcHx:  MODEL Y-DIS MIN/MAX:  ', np.nanmin(mylocs), np.nanmax(mylocs))
+     print(' calcHx:  OBS   X-DIS MIN/MAX:  ', np.nanmin(xloc),   np.nanmax(xloc))
+     print(' calcHx:  MODEL X-DIS MIN/MAX:  ', np.nanmin(mxlocs), np.nanmax(mxlocs))
 
-     print(' calcHx:  OBS   HGT MIN/MAX:  ', height.min(), height.max())
-     print(' calcHx:  MODEL HGT MIN/MAX:  ', mhgts.min(), mhgts.max())
+     print(' calcHx:  OBS   HGT MIN/MAX:  ', np.nanmin(height), np.nanmax(height))
+     print(' calcHx:  MODEL HGT MIN/MAX:  ', np.nanmin(mhgts),  np.nanmax(mhgts))
 
   else: #--- Lat/Lon Coordinates
      lat = yloc
@@ -73,21 +73,21 @@ def calcHx(fcst, kind, yloc, xloc, height, elev, azimuth,
      mlats = fcst['LAT']  #--- JDL Will Need To UPDATE
      mhgts = fcst['zh']
 
-     print(' calcHx:  OBS   LAT MIN/MAX:  ', lat.min(), lat.max())
-     print(' calcHx:  MODEL LAT MIN/MAX:  ', mlats.min(), mlats.max())
-     print(' calcHx:  OBS   LON MIN/MAX:  ', lon.min(), lon.max())
-     print(' calcHx:  MODEL LON MIN/MAX:  ', mlons.min(), mlons.max())
+     print(' calcHx:  OBS   LAT MIN/MAX:  ', np.nanmin(lat),    np.nanmax(lat))
+     print(' calcHx:  MODEL LAT MIN/MAX:  ', np.nanmin(mlats),  np.nanmax(mlats))
+     print(' calcHx:  OBS   LON MIN/MAX:  ', np.nanmin(lon),    np.nanmax(lon))
+     print(' calcHx:  MODEL LON MIN/MAX:  ', np.nanmin(mlons),  np.nanmax(mlons))
 
-     print(' calcHx:  OBS   HGT MIN/MAX:  ', height.min(), height.max())
-     print(' calcHx:  MODEL HGT MIN/MAX:  ', mhgts.min(), mhgts.max())
+     print(' calcHx:  OBS   HGT MIN/MAX:  ', np.nanmin(height), np.nanmax(height))
+     print(' calcHx:  MODEL HGT MIN/MAX:  ', np.nanmin(mhgts),  np.nanmax(mhgts))
 
-  b = N.zeros([5])
+  b = np.zeros([5])
 
-  for n in N.arange(nobs):
+  for n in np.arange(nobs):
     #if N.isnan(xloc[n]) == False: continue
-    if N.isnan(xloc[n]): 
-       Hx_vr[n] = N.nan
-       Hx_Z[n] = N.nan
+    if np.isnan(xloc[n]): 
+       Hx_vr[n] = np.nan
+       Hx_Z[n] = np.nan
        continue
 
     if n%20000. == 0:
@@ -99,36 +99,36 @@ def calcHx(fcst, kind, yloc, xloc, height, elev, azimuth,
     if cartesian: #--- Use x/y/z Coordinates
       if xloc[n] != ixloc:
          ixloc = xloc[n]
-         i1, i2, dx1, dx2, dx = location.interp_wghts(ixloc, mxlocs)
+         i1, i2, dx1, dx2, dx = interp.interp_wghts(ixloc, mxlocs)
       if yloc[n] != iyloc:
          iyloc = yloc[n]
-         j1, j2, dy1, dy2, dy = location.interp_wghts(iyloc, mylocs)
+         j1, j2, dy1, dy2, dy = interp.interp_wghts(iyloc, mylocs)
       if height[n] != ihgt:
         ihgt = height[n]
-        k1, k2, dz1, dz2, dz = location.interp_wghts(ihgt, mhgts)
+        k1, k2, dz1, dz2, dz = interp.interp_wghts(ihgt, mhgts)
 
     else: #--- Use Lat/Lon Coordinates
       if lon[n] != ilon:
         ilon = lon[n]
-        i1, i2, dx1, dx2, dx = location.interp_wghts(ilon, mlons)
+        i1, i2, dx1, dx2, dx = interp.interp_wghts(ilon, mlons)
       if lat[n] != ilat:
         ilat = lat[n]
-        j1, j2, dy1, dy2, dy = location.interp_wghts(ilat, mlats)
+        j1, j2, dy1, dy2, dy = interp.interp_wghts(ilat, mlats)
       if height[n] != ihgt:
         ihgt = height[n]
-        k1, k2, dz1, dz2, dz = location.interp_wghts(ihgt, mhgts)
+        k1, k2, dz1, dz2, dz = interp.interp_wghts(ihgt, mhgts)
 
     if i1 < 0 or j1 < 0 or k1 < 0:  continue
     if rads:
        el = elev[n]
     else:
-       el = N.deg2rad(elev[n])
+       el = np.deg2rad(elev[n])
 
   # The azimuth (in my PAR file) have north as 0 degreees, but I think this is what is needed
     if rads:
        az = azimuth[n]
     else:
-       az = N.deg2rad(azimuth[n])
+       az = np.deg2rad(azimuth[n])
 
   # have to avoid using last member since it the mean
 
@@ -147,19 +147,19 @@ def calcHx(fcst, kind, yloc, xloc, height, elev, azimuth,
 
     # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
 
-      refl   = 10.0**(0.1*N.clip(b[3],_dbz_min,_dbz_max))
+      refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
       vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
 
     # model's VR
 
 
-      Hx_Z[n] = N.clip(b[3],_dbz_min,_dbz_max)  
+      Hx_Z[n] = np.clip(b[3],_dbz_min,_dbz_max)  
 
  
       if Hx_Z[n] >= clear_dbz: # --- Remove Radial Velocity Observations from Regions of Clear Air
          Hx_vr[n] = b[0]*math.sin(az)*math.cos(el) + b[1]*math.cos(az)*math.cos(el) + (b[2]-vfall)*math.sin(el)
       else:
-         Hx_vr[n] = N.nan  #--- Don't consider Vr in regions of low Z
+         Hx_vr[n] = np.nan  #--- Don't consider Vr in regions of low Z
     if kind[n] == 12:  # DBZ
 
       for m, key in enumerate( ["dbz"]):
@@ -173,22 +173,8 @@ def calcHx(fcst, kind, yloc, xloc, height, elev, azimuth,
 
     # model's DBZ
 
-      Hx_Z[n] = N.clip(b[0],_dbz_min,_dbz_max)
+      Hx_Z[n] = np.clip(b[0],_dbz_min,_dbz_max)
       
 # END OBS_OP
 
-# Remove missing Hx's and strip the input data of those points as well...
-  #Hxf[:]=Hx[:]
   return Hx_vr,Hx_Z  #,yloc,xloc
-  #idx = N.where(Hx[:] != missing)
-  #nobs= N.size(idx)
-  #Hxf = N.zeros([nobs])
-  #Hxf[:]= Hx[idx]
-
-  #if nobs > 0:
-  #  if cartesian:
-  #     return idx, Hxf, kind[idx], yloc[idx], xloc[idx], height[idx], elev[idx], azimuth[idx]
-  #  else:
-  #     return idx, Hxf, kind[idx], lat[idx], lon[idx], height[idx], elev[idx], azimuth[idx]
-  #else:
-  #  return None, 0, 0, 0, 0, 0, 0, 0
