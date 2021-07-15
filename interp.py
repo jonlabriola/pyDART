@@ -202,14 +202,17 @@ def unstagger_grid(var,axis):
 
 #==============================================================================
 
-def rad_obs_loc(fcst,locx,locy,rdr_hgt,tilt,min_range=3000.,max_range=150000.):
+def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
+#def rad_obs_loc(radobs,min_range=3000.,max_range=150000.):
    """
-   Define the location of different radar locations for a single tilt
+   Define the location of different radar locations for a radar volume
   
-   locx: The x-location of the radar [float]   (m)
-   locy: The y-location of the radar [float]   (m)
-   rdr_hgt: The height of the radar  [float]   (m)
-   tilts:   The radar tilts          [float] (radians)
+   reads in the radobs class, which contains:
+     model:  Model Information including xx,yy [ny,nx] (m)
+     xloc: The x-location of the radar  float   (m)
+     yloc: The y-location of the radar  float   (m)
+     zloc: The height of the radar      float   (m)
+     tilts:   The radar tilts          [ntilt]   (radians)
 
    optional:
       min_range: Minimum Distance of radar observations
@@ -219,7 +222,7 @@ def rad_obs_loc(fcst,locx,locy,rdr_hgt,tilt,min_range=3000.,max_range=150000.):
       obx:  The x-location of the radar observation   [ntilt,ny,nx] (m)
       oby:  The y-location of the radar observation   [ntilt,ny,nx] (m)
       obz:  The height of the radar observation       [ntilt,ny,nx] (m)
-      tilt: The radar tilt angle                      [ntilt,ny,nx] (radians)
+      radtilt: The radar tilt angle                      [ntilt,ny,nx] (radians)
       az:   Observation azimuth angle                 [ntilt,ny,nx] (radians)
    
    """
@@ -230,87 +233,108 @@ def rad_obs_loc(fcst,locx,locy,rdr_hgt,tilt,min_range=3000.,max_range=150000.):
 
    #--- Defining Forecast Grid Information 
    irange = np.arange(0,max_range+100.,100.) # Radar Range
-   nx = fcst['xh'].shape[0]
-   ny = fcst['yh'].shape[0]
-   xh = np.tile(fcst['xh'], (ny,1))
-   yh = np.transpose(np.tile(fcst['yh'], (nx,1)))
+   xh = model['xh2d'] #---2D Plane of X-Distance Values
+   nx = model['nx']
+   yh = model['yh2d'] #---2D Plane of Y-Distance Values
+   ny = model['ny']
+   ntilt = len(radtilt)
 
    #--- Calculating the Distance from the Radar
-   rad_dis = np.sqrt(((xh-locx)**2) + ((yh-locy)**2))
+   rad_dis = np.sqrt(((xh-xloc)**2) + ((yh-yloc)**2))
 
    #--- Calculating the Radar Azimuth Angle
-   azimuth = np.arctan((xh-locx)/(yh-locy))
-   azimuth = np.where((yh-locy)<0,azimuth+np.pi,azimuth)
+   azimuth = np.arctan((xh-xloc)/(yh-yloc))
+   azimuth = np.where((yh-yloc)<0,azimuth+np.pi,azimuth)
    azimuth = azimuth * (180./np.pi)
    azimuth = np.where(azimuth < 0, 360 + azimuth,azimuth)
+   azimuth = np.radians(azimuth)
 
-   #--- Calculating Radar Height Based Upon Distance from Radar
-   #obz = np.zeros((nlev,ny,nx))
-   #obz[:,:,:] = np.nan
-   #az = np.zeros(obz.shape)
-   #obx = np.zeros(az.shape)
-   #oby = np.zeros(az.shape)
+   #--- Calculating Beam Height Based Upon Radar Tilt
+   obz = np.zeros((ntilt,ny,nx))
+   obx = np.zeros(obz.shape)
+   oby = np.zeros(obz.shape)
+   rtilt = np.zeros(obz.shape)
+   az = np.zeros(obz.shape)
 
-   #obz = np.zeros((ny,nx))
-   #obz[:,:] = np.nan
-   #az = np.zeros(obz.shape)
-   #obx = np.zeros(az.shape)
-   #oby = np.zeros(az.shape)
+   #--- Loop Over the different radar tilts, calculate height
+   for ntilt, tilt in enumerate(radtilt):
+      beam_hgt =  ((irange**2) + (ke*erad)**2 + (2*irange*ke*erad*np.sin(tilt)))**0.5 - (ke * erad)+zloc
+      min_hgt = ((min_range**2) + (ke*erad)**2 + (2*min_range*ke*erad*np.sin(tilt)))**0.5 - (ke * erad)+zloc
+      max_hgt = ((max_range**2) + (ke*erad)**2 + (2*max_range*ke*erad*np.sin(tilt)))**0.5 - (ke * erad)+zloc
+      circle_rad = ke*erad*np.arcsin((irange*np.cos(tilt))/((ke*erad)+beam_hgt)[ntilt])
 
-   #for ntilt,radtilt in enumerate(tilts):
-   #   print("Evalulated tilt = ",radtilt)
-   #   beam_hgt =  ((irange**2) + (ke*erad)**2 + (2*irange*ke*erad*np.sin(radtilt)))**0.5 - (ke * erad)+rdr_hgt
-   #   min_hgt = ((min_range**2) + (ke*erad)**2 + (2*min_range*ke*erad*np.sin(radtilt)))**0.5 - (ke * erad)+rdr_hgt
-   #   max_hgt = ((max_range**2) + (ke*erad)**2 + (2*max_range*ke*erad*np.sin(radtilt)))**0.5 - (ke * erad)+rdr_hgt
-   #   circle_rad = ke*erad*np.arcsin((irange*np.cos(radtilt))/((ke*erad)+beam_hgt))
-
-   #   #--- Loop over the different radii to obtain radar height
-   #   for hindex in range(0,circle_rad.shape[0]-1):
-   #      obz[ntilt] = np.where((rad_dis >= circle_rad[hindex]) & (rad_dis < circle_rad[hindex+1]),beam_hgt[hindex],obz[ntilt])
-   #   obz[ntilt] = np.where((obz[ntilt] > max_hgt) | (obz[ntilt] < min_hgt),np.nan,obz[ntilt])
-   #   az  = np.where(np.isnan(obz[ntilt]),np.nan,azimuth)
-   #   obx    = np.where(np.isnan(obz[ntilt]),np.nan,xh)
-   #   oby    = np.where(np.isnan(obz[ntilt]),np.nan,yh)
-   #   tilt    = np.where(np.isnan(obz[ntilt]),np.nan,radtilt)
+      #--- Loop over the different radii to obtain approximate beam height
+      for hindex in range(0,circle_rad.shape[0]-1):
+         obz[ntilt] = np.where((rad_dis >= circle_rad[hindex]) & (rad_dis < circle_rad[hindex+1]),beam_hgt[hindex],obz[ntilt])
+      obz[ntilt]    = np.where((obz[ntilt] > max_hgt) | (obz[ntilt] < min_hgt),np.nan,obz[ntilt])
+      az[ntilt]     = np.where(np.isnan(obz[ntilt]),np.nan,azimuth)
+      obx[ntilt]    = np.where(np.isnan(obz[ntilt]),np.nan,xh)
+      oby[ntilt]    = np.where(np.isnan(obz[ntilt]),np.nan,yh)
+      rtilt[ntilt]  = np.where(np.isnan(obz[ntilt]),np.nan,tilt)
 
 
-   beam_hgt =  ((irange**2) + (ke*erad)**2 + (2*irange*ke*erad*np.sin(tilt)))**0.5 - (ke * erad)+rdr_hgt
-   min_hgt = ((min_range**2) + (ke*erad)**2 + (2*min_range*ke*erad*np.sin(tilt)))**0.5 - (ke * erad)+rdr_hgt
-   max_hgt = ((max_range**2) + (ke*erad)**2 + (2*max_range*ke*erad*np.sin(tilt)))**0.5 - (ke * erad)+rdr_hgt
-   circle_rad = ke*erad*np.arcsin((irange*np.cos(tilt))/((ke*erad)+beam_hgt))
-
-      #--- Loop over the different radii to obtain radar height
-   obz = np.zeros((ny,nx))
-   for hindex in range(0,circle_rad.shape[0]-1):
-      obz = np.where((rad_dis >= circle_rad[hindex]) & (rad_dis < circle_rad[hindex+1]),beam_hgt[hindex],obz)
-   obz    = np.where((obz > max_hgt) | (obz < min_hgt),np.nan,obz)
-   az     = np.where(np.isnan(obz),np.nan,azimuth).flatten()
-   obx    = np.where(np.isnan(obz),np.nan,xh).flatten()
-   oby    = np.where(np.isnan(obz),np.nan,yh).flatten()
-   tilt   = np.where(np.isnan(obz),np.nan,tilt).flatten()
-   obz    = obz.flatten()
-
-      #f = interpolate.interp1d(s, h)
-      #
-      #for ii  in range(0,nx):
-      #   for jj in range(0,ny):
-      #      if r[jj,ii] <= np.amax(s):
-      #         hgt = f(r[jj,ii])
-      #         if hgt > min_hgt and hgt < max_hgt:
-      #            obz[ntilt,jj,ii] = f(r[jj,ii])
-      #            az[ntilt,jj,ii] = azimuth[jj,ii]
-      #         else:
-      #            obz[ntilt,jj,ii] = np.nan
-      #            az[ntilt,jj,ii] = np.nan
-
-   return obx,oby,obz,tilt,az
+   return obx,oby,obz,rtilt,az
 
 #=====================================================================================================
 def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
    """ 
    Returns a data value for the point
-   Arguments: x/y/obs:  1D arrays of location
-              x0, y0:   point to analyze to
+   Arguments: x, y, obs    : [nz,ny, nx]
+              x0, y0       : [nz,ny_coarse,nx_coarse]
+              roi          : radius of influence
+              missing:  value to assign if no data, default = 0.0
+
+   This routine can also be implemented in FORTRAN much quicker...
+   """
+   # Create distance array
+   [nz,ny,nx] = x0.shape
+
+   #nobs = np.size(y0)
+   new_ob = np.zeros((nz,ny,nx))
+   new_ob[:,:,:] = np.nan
+   print('new_obs shape = ', new_ob.shape)
+   R2    = roi**2.0
+   print(np.amax(x0))
+   for k in range(0,nz):
+      print('Performing cressman on the %03d level'%k)
+      for j in range(0,ny):
+         for i in range(0,nx):
+            
+            if np.isnan(x0[k,j,i]): continue #--- Skip NaN's
+           
+
+            if np.isnan(x0[k,j,i]):
+               print(x0[k,j,i]) 
+            dis = np.sqrt( (x[k]-x0[k,j,i])**2 + (y[k]-y0[k,j,i])**2 )
+            indices = np.where(dis<= roi)
+            size = np.size(indices)
+            if size != 0:
+               #print('indices = ',indices)
+               w_sum = 0.0
+               top   = 0.0
+               rk2 = dis[indices]**2.
+               wk = (R2-rk2)/(R2+rk2)
+               w_sum = np.sum(wk)
+               top = np.sum(wk*obs[k][indices])
+               if w_sum<0.01:
+                  new_ob[k,j,i] = missing
+               else:
+                  new_ob[k,j,i] = top/w_sum
+
+            else:
+               new_ob[k,j,i] = np.nan
+   return new_ob
+
+#===============================================================================
+
+
+#=====================================================================================================
+def cressman_orig(x, y, obs, x0, y0, roi, missing=-999999999.):
+   """
+   Returns a data value for the point
+   Arguments: x, y    : [nz,ny, nx]
+              obs:      [nz,ny,nx]
+              x0, y0:   [nz,ny_coarse,nx_coarse]
               roi:      radius of influence
               missing:  value to assign if no data, default = 0.0
 
@@ -337,7 +361,7 @@ def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
        w_sum = np.sum(wk)
        top = np.sum(wk*obs[indices])
        if w_sum < 0.01:
-          new_ob[ob] = missing      
+          new_ob[ob] = missing
        else:
           new_ob[ob] = top/w_sum
      else:  #if there are no values assign the data point a NaN
@@ -345,4 +369,3 @@ def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
    return new_ob
 
 #===============================================================================
-

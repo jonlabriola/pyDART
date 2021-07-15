@@ -3,31 +3,34 @@ import argparse
 import interp,fwdop,inout
 from netCDF4 import Dataset
 import plotting
-
+import pickle
 #--- These Values Only once an Experiment and can therfore be changed manually to avoid mistakes
 
 #---- Static Parameters Throughout DA ----#
 
 case_type = 'idealized' #-- Either Idealized (i.e., create your own observations) or Real (i.e., read observation from file)
 if case_type == 'idealized':     #--- Must Explicitly List All Parameters
-   locx = [30000,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
-   locy = [30000,250000,75000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
+   xloc = [-100000,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
+   yloc = [-75000, 250000,0]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
    hgt  = [415,0.0,0.0]          #--- The height of the radar station of sea level (JDL Working on This)
    tilts = np.radians(np.array([0.5, 0.9, 1.3, 1.8, 2.4, 3.1, 
            4.0, 5.1, 6.4, 8.0, 10.0, 12.5, 15.6, 19.5])) #--- NEXRAD Tilts
    case_type = 'idealized'       #-- Real Date or Idealized
    clearair_dbz = 10.            #--- Threshold for clear air observations
-   missing = -999.               #--- Value of Missing Observation
+   #missing = -999.               #--- Value of Missing Observation
    vr_error = 4.0                #--- Vr Error (m/s)
    dbz_error = 6.0               #--- dBZ Error (dBZ)
+   save_fine_obs = True          #--- Flag to save fine observations (in addition to coarse obs)
+   nrdr = len(xloc)
+   output_path = 'radar_obs.pickle' #--- Output Radar Observation Object into a Pickle File
 else:  #--- A Real-Data Case
    print('Work on this at a later time')
 
 
 #--- Superobbing Information
 superobs = True        #--- If True Apply Cressman Filter
-new_grid = 5000.       #--- New Horizontal Grid Spacing
-influence_rad = 6000.  #--- Cressman Function influence radius
+nskip = 4              #--- The number of grid points to skip
+roi = 6000.            #--- Cressman Function influence radius
 
 #--- Thinning Observations (Need To Update if Desired)
 #clear_thin = 6    #--- The number of grid points to skip where Z < clearir_dbz
@@ -42,139 +45,82 @@ arguments = parser.parse_args()
 #       Start Working Code        #
 #=================================#
 
-#--- Step 1: Grab Model Data (Currently CM1)
-varname = ['ua','va','wa','dbz','rho','xh','yh','zh']
-mem = inout.read_cm1(arguments.obs_path,varname)
+#--- Create Observation Class for Radars
+radobs = inout.obs_plat('radar',clear_air = clearair_dbz)
 
-#--- Observation Location Info
-nrdr = len(locx)
-ntilt = tilts.shape[0]
-obloc = {}  #--- radar observation locations
+#--- Open Model State Variables
+radobs.readmod('cm1',arguments.obs_path)
 
-#--- Determin Grid of Coarse Obs
-if superobs:
-   #--- Coarsened data is saved with a 2 symbol
-   nskip_x = int(np.floor(new_grid/mem['dx']))
-   nskip_y = int(np.floor(new_grid/mem['dy']))
-   mem['xh2'] = mem['xh'][::nskip_x]
-   mem['yh2'] = mem['yh'][::nskip_y]  
-   mem['nx2'] = mem['xh2'].shape[0]
-   mem['ny2'] = mem['yh2'].shape[0]
-   mem['dx2'] = mem['xh2'][1]-mem['xh2'][0]
-   mem['dy2'] = mem['yh2'][1]-mem['yh2'][0]
+for rdr in range(0,nrdr): #--- Loop over State Variables
 
+   #---Step 1: Define the Observation Platform
+   platform_name = 'radar%02d'%(rdr+1)
+   radobs.estab_platform(platform_name,xloc[rdr],yloc[rdr],hgt[rdr],tilts)
 
-#--- JDL If your decide to further thin observations make sure 
-#--- to update this block
+   #--- Step 2: Calculate Radar Observation Locations in volume
+   radobs.obloc()  
 
+   #--- Step 3: Call Forward Operator
+   radobs.forward_operator('zvr')
+   if save_fine_obs: #--- Save fine Observations
+      #--- Save the Fine Observations (dbz)
+      dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
+      dbzerr = np.zeros(radobs.obdbz.shape).fill(dbz_error)   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
+      radobs.addob("fine_z", dbztype, dbzerr, obdbz=True) 
 
-#--- Define your final entry variables to save
-rdrobs = {}
-for varname in ['dbz','vr','x','y','z','elv','az','rdrx','rdry','rdrz','dbzerr','vrerr']:
-   if 'xh2' in mem:
-      rdrobs[varname] = np.zeros((nrdr,ntilt,mem['ny2'],mem['nx2']))
-   else: 
-      rdrobs[varname]  = np.zeros((nrdr,ntilt,mem['ny'],mem['nx'])) 
+      #--- Save the Fine Observations (vr)
+      vrtype = np.zeros(radobs.obvr.shape).fill(11)       #--- VELOCITY CODE for DART
+      vrerr = np.zeros(radobs.obvr.shape).fill(vr_error)  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
+      radobs.addob("fine_vr", vrtype, vrerr, obvr=True)
 
+   #--- Step 4: Filter Observations to Coarse Grid
+   if superobs:
+#      #--- First Save the High-Resolution Observations
+       radobs.superobs(nskip,roi=roi)
+   
+       dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
+       dbzerr = np.zeros(radobs.obdbz.shape).fill(dbz_error)   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
+       radobs.addob("superob_z", dbztype, dbzerr, obdbz=True)
 
-for rdr in range(0,nrdr):
-   for rtilt,radtilt in enumerate(tilts):
-      tmpob = {}
-      #--- Step 2: Calculate Radar Observation Locations for Tilts
-      tmpob['x'],tmpob['y'],tmpob['z'],tmpob['elv'],tmpob['az'] = interp.rad_obs_loc(mem,locx[rdr],locy[rdr],hgt[rdr],radtilt)
-
-      #--- Step 3: Call Forward Operator
-      obtype = np.zeros((np.size(tmpob['x'])))
-      obtype[:] = 11 
-      tmpob['vr'],tmpob['dbz'] = fwdop.calcHx(mem, obtype, tmpob['x'], tmpob['y'], tmpob['z'], tmpob['elv'], tmpob['az'], 
-                                       clear_dbz= clearair_dbz,cartesian=True)
+       vrtype = np.zeros(radobs.obvr.shape).fill(11)       #--- VELOCITY CODE for DART
+       vrerr = np.zeros(radobs.obvr.shape).fill(vr_error)  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
+       radobs.addob("superob_vr", vrtype, vrerr, obvr=True) 
 
 
-      #dbz_threed = np.reshape(tmpob['dbz'],(mem['ny'],mem['nx']),order='F')
-      #plotting.rough_plot(dbz_threed,'dbz')
-
-      #--- Plot observations if desired
-      #vr_threed = np.reshape(obs_vr,(mem['ny'],mem['nx']),order='F') 
-      #plotting.rough_plot(vr_threed,'vr')
-
-      #--- Step 4: Filter Observations to Coarse Grid
-      if superobs:
-         #--- First Save the High-Resolution Observations
-         fine_x = tmpob['x']
-         fine_y = tmpob['y']
-         fine_dbz = tmpob['dbz']
-         fine_vr = tmpob['vr']
-
-         #--- Coarsen Observation Grid by nskip (Need to Spatially Regrid To Do This) 
-         for key in tmpob.keys():
-            tmpob[key] = np.reshape(tmpob[key],(mem['ny'],mem['nx']),order='F')[::nskip_y,::nskip_x].flatten(order='F')
-         
-         #dbz_threed = np.reshape(tmpob['dbz'],(mem['ny2'],mem['nx2']),order='F')
-         #plotting.rough_plot(dbz_threed,"dbz")
-
-         #--- Cressman Filter #--- JDL Need to check the cressman function is not complete
-         print('Applying Cressman Filter to dBZ')
-         tmpob['dbz'] = interp.cressman(fine_x,fine_y,fine_dbz,tmpob['x'],tmpob['y'],influence_rad)
-
-         print('Applying Cressman Filter to Vr')
-         tmpob['vr'] = interp.cressman(fine_x,fine_y,fine_vr,tmpob['x'],tmpob['y'],influence_rad)
-     
-
-      #--- Conduct Test Plot
-      #dbz_threed = np.reshape(tmpob['dbz'],(mem['ny2'],mem['nx2']),order='F')
-      #plotting.rough_plot(dbz_threed,"dbz") 
-
-      #--- Step 5 Thin Radar Data (If Desired)
-
-      
-      #--- Step 6 Return to a 4-Dimensional Array (nrdr,tilt,ny,nx) to prepare for storage
-      if 'nx2' in mem:
-         ny_save = mem['ny2']
-         nx_save = mem['nx2']
-      else:
-         ny_save = mem['ny']
-         nx_save = mem['nx']
-
-      for key in rdrobs.keys():
-         if key == 'rdrx':    rdrobs[key][rdr,rtilt] = locx[rdr] #--- Radar X-Location
-         elif key == 'rdry':  rdrobs[key][rdr,rtilt] = locy[rdr] #--- Radar Y-Location
-         elif key == 'rdrz':  rdrobs[key][rdr,rtilt] = hgt[rdr]  #--- Radar Z-Location
-         elif key == 'dbzerr': rdrobs[key][rdr,rtilt] = dbz_error #--- Observation Error
-         elif key == 'vrerr':  rdrobs[key][rdr,rtilt] = vr_error
-         else:
-            rdrobs[key][rdr,rtilt] = np.reshape(tmpob[key],(ny_save,nx_save),order='F')
+pickle.dump(radobs,open(output_path, "wb" ) )
+#test_obj = pickle.load(open("radarobs.p", "rb" ))
 
 
 #---Step 6 Create NetCDF file
-fn = 'radar_obs.nc'
-wrtfile = Dataset(fn, 'w', format='NETCDF4')
-if 'nx2' in mem:
-  wrtfile.setncattr('nx',mem['nx2'])
-  wrtfile.setncattr('ny',mem['ny2'])
-else:
-  wrtfile.setncattr('nx',mem['nx'])
-  wrtfile.setncattr('ny',mem['ny'])
-wrtfile.setncattr('ntilt',ntilt)
-wrtfile.setncattr('nrdr',nrdr)
-if 'nx2' in mem:
-   wrtfile.createDimension('yh', mem['ny2'])
-   wrtfile.createDimension('xh', mem['nx2'])
-else:
-   wrtfile.createDimension('yh', mem['ny'])
-   wrtfile.createDimension('xh', mem['nx'])
-wrtfile.createDimension('tilts', ntilt)
-wrtfile.createDimension('radars', nrdr)
-
-for key in rdrobs.keys():
-   wrtfile.createVariable(key, 'f4', ('radars','tilts','yh','xh'))
-   wrtfile.variables[key][:,:,:,:] = rdrobs[key][:,:,:,:]
-   if key in ['dbz','dbzerr']:
-      wrtfile.variables[key].units = 'dBZ'
-   elif key in ['vr','vrerr']:
-      wrtfile.variables[key].units = 'm s^{-1}'
-   elif key in ['rdrx','rdry','rdrz','x','y','z']:
-      wrtfile.variables[key].units = 'm'
-   elif key in ['az','elv']:
-      wrtfile.variables[key].units = 'radians'
-
-wrtfile.close()
+#fn = 'radar_obs.nc'
+#wrtfile = Dataset(fn, 'w', format='NETCDF4')
+#if 'nx2' in mem:
+#  wrtfile.setncattr('nx',mem['nx2'])
+#  wrtfile.setncattr('ny',mem['ny2'])
+#else:
+#  wrtfile.setncattr('nx',mem['nx'])
+#  wrtfile.setncattr('ny',mem['ny'])
+#wrtfile.setncattr('ntilt',ntilt)
+#wrtfile.setncattr('nrdr',nrdr)
+#if 'nx2' in mem:
+#   wrtfile.createDimension('yh', mem['ny2'])
+#   wrtfile.createDimension('xh', mem['nx2'])
+#else:
+#   wrtfile.createDimension('yh', mem['ny'])
+#   wrtfile.createDimension('xh', mem['nx'])
+#wrtfile.createDimension('tilts', ntilt)
+#wrtfile.createDimension('radars', nrdr)
+#
+#for key in rdrobs.keys():
+#   wrtfile.createVariable(key, 'f4', ('radars','tilts','yh','xh'))
+#   wrtfile.variables[key][:,:,:,:] = rdrobs[key][:,:,:,:]
+#   if key in ['dbz','dbzerr']:
+#      wrtfile.variables[key].units = 'dBZ'
+#   elif key in ['vr','vrerr']:
+#      wrtfile.variables[key].units = 'm s^{-1}'
+#   elif key in ['rdrx','rdry','rdrz','x','y','z']:
+#      wrtfile.variables[key].units = 'm'
+#   elif key in ['az','elv']:
+#      wrtfile.variables[key].units = 'radians'
+##
+#wrtfile.close()

@@ -14,6 +14,10 @@ def rough_plot(var,varname):
    elif varname == 'vr':
       contours = np.arange(-30,30,0.5)
       colormap = plt.get_cmap("BrBG")
+   elif varname == 'az':
+      contours = np.arange(0,360,10.)
+      #cb_ticks = np.arange(0,5000.,500.)
+      colormap = plt.get_cmap("gist_stern")
    else:
       contours = np.arange(0,5000.,500.)
       #cb_ticks = np.arange(0,5000.,500.)

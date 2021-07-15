@@ -6,9 +6,11 @@ There are four primary goals supported by this package:
    -Initially do by observation type (MRMS, NEXRAD, Idealized Radar,  Conventional, Idealized Conventional)
 
    a.) idealRadObs.py - Generates simulated radar observations (vr/dBZ) at the specified locations
+
+       generates radar observation file that contains full volume scans from different radars
    b.) idealConvObs.py - Generates conventional observations at specified locatiosn
    			 includes surface stations, profilers, soundings  
-   
+       generates conventional observation file that contains soundings, profilers, and surface obs
 
 2.) Combine all unique observations into a single netcdf file
    
