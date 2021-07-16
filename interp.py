@@ -369,3 +369,39 @@ def cressman_orig(x, y, obs, x0, y0, roi, missing=-999999999.):
    return new_ob
 
 #===============================================================================
+
+def point_interp(fcst,varname,xloc,yloc,zloc):
+    """
+    Interpolate all 3D variables to a single point in a three-dimensional array
+
+    Return:
+      A dictionary contain the point values for interpolations
+    """
+    #--- Look at three-dimensional variables
+    point_ob = {}
+ 
+    #--- Selecting the Data Points to Interp Between
+    i1, i2, dx1, dx2, dx = interp_wghts(xloc, fcst['xh'])
+    j1, j2, dy1, dy2, dy = interp_wghts(yloc, fcst['yh'])
+    k1, k2, dz1, dz2, dz = interp_wghts(zloc, fcst['zh'])
+
+    if i1 < 0 or j1 < 0 or k1 < 0: #--- Observation of the grid 
+       point_ob = np.nan
+    else:
+       q1   = dx1*fcst[varname][k1,j1,i1] + dx2*fcst[varname][k1,j1,i2]
+       q2   = dx1*fcst[varname][k1,j2,i1] + dx2*fcst[varname][k1,j2,i2]
+       vb   = (dy1*q1 + dy2*q2) / ( dx*dy )
+       q1   = dx1*fcst[varname][k2,j1,i1] + dx2*fcst[varname][k2,j1,i2]
+       q2   = dx1*fcst[varname][k2,j2,i1] + dx2*fcst[varname][k2,j2,i2]
+       vt   = (dy1*q1 + dy2*q2) / ( dx*dy )
+       point_ob = (dz1*vb + dz2*vt) / dz
+       #for m, key in enumerate(varnames):
+       #   q1   = dx1*fcst[key][k1,j1,i1] + dx2*fcst[key][k1,j1,i2]
+       #   q2   = dx1*fcst[key][k1,j2,i1] + dx2*fcst[key][k1,j2,i2]
+       #   vb   = (dy1*q1 + dy2*q2) / ( dx*dy )
+       #   q1   = dx1*fcst[key][k2,j1,i1] + dx2*fcst[key][k2,j1,i2]
+       #   q2   = dx1*fcst[key][k2,j2,i1] + dx2*fcst[key][k2,j2,i2]
+       #   vt   = (dy1*q1 + dy2*q2) / ( dx*dy )
+       #   point_ob{m} = (dz1*vb + dz2*vt) / dz
+
+    return point_ob

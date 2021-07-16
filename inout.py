@@ -115,7 +115,7 @@ class obs_plat(object):
        self.obs[self.plat_name] = {}
        self.obs[self.plat_name]['plat_x']  = self.xloc
        self.obs[self.plat_name]['plat_y']  = self.yloc
-       self.obs[self.plat_name]['plat_z']  = self.yloc  
+       self.obs[self.plat_name]['plat_z']  = self.zloc  
 
        #--- Adding Radar Capabilities
        if self.obtype == 'radar':
@@ -134,27 +134,80 @@ class obs_plat(object):
          print('Other observations types are not accomodated yet')
 
 
+   def conv_operator(self,varname,**kwargs):
+      """
+      Interpolate observations of the same type (profileof the same type (profiof the same type (profiler,sounding,surface))   
+      Required arguments:
+         varname:  A string of the variable name   
 
-   def forward_operator(self,varname):
+      Optional arguments:
+         xloc = array of x-location(s)  [nobs]
+         yloc = array of y-location(s)  [nobs]
+         zloc = array of z-location(s)  [nobs]
+   
+      If any parameter is not defined than refer to station location
+      """
+      #--- Select Observation location
+      if 'xloc' in kwargs:
+          self.obx = kwargs['xloc']
+      else:
+          self.obx = [self.xloc]
+
+      if 'yloc' in kwargs:
+          self.oby = kwargs['yloc']
+      else:
+          self.oby = [self.xloc]
+
+      if 'zloc' in kwargs:
+          self.obz = kwargs['zloc']
+      else:
+          self.obz = [self.xloc]
+
+      self.ob = np.zeros((len(self.obz)))
+
+      #--- Loop Through observation locations
+      for zindex,zloc in enumerate(self.obz):
+         xloc = self.obx[zindex]
+         yloc = self.oby[zindex]
+   
+         if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M']:
+            self.ob[zindex] = interp.point_interp(self.model,'u',xloc,yloc,zloc)
+
+         elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M']:
+            self.ob[zindex] = interp.point_interp(self.model,'v',xloc,yloc,zloc)    
+
+         elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M']:
+            p = interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            pt = interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+            self.ob[zindex] = fwdop.theta_to_temp(pt,p)
+            print('JDL Come Back to Make sure you dont have to keep Temperature in Kelvin')
+
+         elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
+            self.ob[zindex] = interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            print('JDL Come Back to Make Sure the Assimilated units of pressure is correct')
+
+         elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M']: #--- JDL Does CM1 use qv or specific humidity?
+            self.ob[zindex] = interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+            print('JDL Come Back to Make sure you dont have to convert to specific humidity') 
+
+         else:
+            print('Observation Unknown: %s'%varname)
+
+
+   def radar_operator(self,dbz_only=False):
       """
       Observation operator given model state variables
     
-      Required:
-         varname:  A string of the observation to generatee
+      Optional Arguments:
+         dbz_only: A string of the observation to generatee
       """
-      if varname.lower() in ['zvr','vr','vrz']: #--- Calculating both Z/Vr
+      if dbz_only:
+         self.obdbz = fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
+                                            clear_dbz = self.clearair,cartesian=True,dbzOnly=True)
+      else:
          self.obvr,self.obdbz = fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
                                             clear_dbz = self.clearair,cartesian=True) 
 
-      elif varname.lower() in ['z']: #--- Calculate Just Z
-         self.obdbz = fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
-                                            clear_dbz = self.clearair,cartesian=True,dbzOnly=True) 
-      
-      elif varname.lower() in ['rh']:
-         #self.ob = #--- For all other observations that can be calculated individually, write in generic self.ob
-         print('Other observation types currently not supported')  #--- Work on these other ones for surface
-      else:
-         print('Other observation types currently not supported')
 
 
 
@@ -239,7 +292,20 @@ class obs_plat(object):
          except:
             print('Unable to save clearair information') 
 
+def obcode():
+   """
+   Grab the observation codes that can be used in DART Data Assimilation
 
+   Returns
+     obcode - A dictionary that contains the observation code numbers
+   """
+   lines = open('/work/jonathan.labriola/python_scripts/pyDART/data/DART_obs.csv','r')
+   obcode = {}
+   for lindex, line in enumerate(lines):
+      if lindex > 0:
+         ln = line.split(', ')
+         obcode[ln[0]] = int(ln[-1])
+   return obcode
 
 #---Step 6 Create NetCDF file
 #fn = 'radar_obs.nc'
