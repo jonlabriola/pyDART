@@ -104,12 +104,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
          if cartesian: #--- Use x/y/z Coordinates
             if xloc[k,j,i] != ixloc:
                ixloc = xloc[k,j,i]
-               #print('ixloc = ',ixloc)
                i1, i2, dx1, dx2, dx = interp.interp_wghts(ixloc, mxlocs)
-               #print('i1 =',i1)
-               #print('i2 =',i2)
-               #print('mxlocs = ',mxlocs[i1:i2])
-               #print(' ')
             if yloc[k,j,i] != iyloc:
                iyloc = yloc[k,j,i]
                j1, j2, dy1, dy2, dy = interp.interp_wghts(iyloc, mylocs)
@@ -174,3 +169,35 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
      return Hx_Z
   else:
      return Hx_vr,Hx_Z  #,yloc,xloc
+
+def theta_to_temp(pt,p):
+   """
+   Calculate temperature given potential temperature and pressure
+
+   input: Both values can be an array or integer
+      pt:   Potential Temperature (K
+       p:   Air Pressure (Pa)
+
+   return
+       T:   Air Temperature (C)
+   """
+
+   R = 287.            # J[kg * K]^-1
+   cp = 1004.          # J[kg * K]^-1
+   R_over_cp = R / cp  # J[kg * K]^-1
+   p_0 = 100000.
+   T = pt / ( (p_0 / p) ** R_over_cp )
+
+   return T - 273.15
+
+def qv_to_spechum(qv) : #--- JDL Does Forward Operator Calculatoe Specific Humidity or Just qv
+   """
+   Calculate temperature given potential temperature and pressure
+
+   input: Both values can be an array or integer
+      qv:   water vapor mixing ratio (kg/kg)
+   return
+       w:   specific himidity
+   """
+
+   return qv/(1+qv)
