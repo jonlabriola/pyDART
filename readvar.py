@@ -3,6 +3,9 @@ from netCDF4 import Dataset
 import interp
 import numpy as np
 
+#--- This module is designed to read in external information including model output,
+#--- and text files
+
 def read_cm1(path,time_str=None):
    """
    Read in model output that can be used to extract simulated observations
