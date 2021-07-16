@@ -19,7 +19,7 @@ import pickle
 sim_snd = True   # Simulate soundings
 sim_sfc = True   # Simulate surface obs
 sim_pro = True   # Simulate profilers
-output_path = './output/conventional_obs.pickle' #--- Save conventional observations here 
+output_path = './output/' #--- Save conventional observations here 
 missing_value = -9999.0
 if sim_snd:
    #--- Block 1: Sounding
@@ -163,5 +163,6 @@ for platform in obs_plat:
 #   data = convob.obs[platform].keys()
 #   for data_ind in data:
 #     print('stored data includes...',data_ind) 
-   
+
+output_path = '%s/conv_obs_%04d%02d%02d%02d%02d.pickle'%(output_path,convob.date['year'],convob.date['month'],convob.date['day'],convob.date['hour'],convob.date['minute'])   
 pickle.dump(convob,open(output_path, "wb" ) )

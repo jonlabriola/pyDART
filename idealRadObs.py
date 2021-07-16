@@ -23,7 +23,7 @@ if case_type == 'idealized':     #--- Must Explicitly List All Parameters
    dbz_error = 6.0               #--- dBZ Error (dBZ)
    save_fine_obs = True          #--- Flag to save fine observations (in addition to coarse obs)
    nrdr = len(xloc)
-   output_path = './output/radar_obs.pickle' #--- Output Radar Observation Object into a Pickle File
+   output_path = './output/' #--- Output Radar Observation Object into a Pickle File
 else:  #--- A Real-Data Case
    print('Work on this at a later time')
 
@@ -95,4 +95,5 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    vrerr = np.zeros(radobs.obvr.shape)*vr_error  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
    radobs.addob("DOPPLER_RADIAL_VELOCITY", vrtype, vrerr, obvr=True) 
 
+output_path = '%s/radar_obs_%04d%02d%02d%02d%02d.pickle'%(output_path,radobs.date['year'],radobs.date['month'],radobs.date['day'],radobs.date['hour'],radobs.date['minute'])
 pickle.dump(radobs,open(output_path, "wb" ) )
