@@ -1,4 +1,5 @@
-import interp,fwdop
+import interp,fwdop,readvar
+import datetime as dt
 from netCDF4 import Dataset
 import numpy as np
 
@@ -26,10 +27,14 @@ class obs_plat(object):
    def __init__(self,obtype,**kwargs):
       self.obtype = obtype
       self.obs = {}  #--- The longterm storage dictionaries for observations
+      self.date = {} #--- Establish a date
+      self.time_str = ['year','month','day','hour','minute','second'] #--- order time is read
       self.obx = None
       self.oby = None
       self.obz = None
       self.missing = -9999.
+
+
       #--- Adding Radar Specific Constants
       if obtype =='radar':
         #--- Add a variable to delineate clear_air
@@ -48,50 +53,11 @@ class obs_plat(object):
       """
       #--- Create a dictionary Array of Model Output
       if model.upper() == 'CM1':
-         #varnames = {'output name in model':'desired save name'}
-         varnames = {'ua':'u','va':'v','wa':'w','dbz':'dbz','rho':'rho',
-                     'prs':'p','theta':'pt','qv':'qv','xh':'xh','yh':'yh','zh':'zh'} 
-         self.model = {}
-         #--- Read In 
-         #xmin  =150 
-         #xmax = 200
-         #ymin = 150 
-         #ymax = 200
-         xmin = 0
-         xmax = 300
-         ymin = 0
-         ymax = 300
-         dumpfile = Dataset(path,"r",fortmat='NETCDF4')
-         for var in varnames.keys():
-            if var in ['xh','yh','zh']: #--- 1-D variables
-               var_tmp = np.squeeze(dumpfile.variables[var][:])
-               if var in ['xh']: var_tmp = var_tmp[xmin:xmax]
-               elif var in ['yh']: var_tmp = var_tmp[ymin:ymax]
-            elif var in ['ua','va','wa']: #--- Unstagger the grid for certain vars
-               if var in ['ua']: unstag_ax = 2 #--- x-axis
-               if var in ['va']: unstag_ax = 1 #--- y-axis
-               if var in ['wa']: unstag_ax = 0 #--- z-axis
-               var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
-               var_tmp = var_tmp[:,ymin:ymax,xmin:xmax]
-            else: #--- No Staggered Grids
-               var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
-               var_tmp = var_tmp[:,ymin:ymax,xmin:xmax]
-            self.model[varnames[var]] = var_tmp
-      
-         dumpfile.close() 
+         self.model = readvar.read_cm1(path,self.time_str)
+      else:
+         print('Add Capabilities to read other models')
 
-         #--- Other Grid Parameters
-         self.model['dx'] = self.model['xh'][1] - self.model['xh'][0] 
-         self.model['nx'] = self.model['xh'].shape[0]
-         self.model['dy'] = self.model['yh'][1]-self.model['xh'][0]
-         self.model['ny'] = self.model['yh'].shape[0]
-         self.model['nz'] = self.model['zh'].shape[0]
-
-         #--- Making 2D Planes of x/y coordinates
-         self.model['xh2d'] = np.tile(self.model['xh'], (self.model['ny'],1))
-         self.model['yh2d'] = np.transpose(np.tile(self.model['yh'], (self.model['nx'],1)))
-
-   def estab_platform(self,plat_name,x,y,z,tilts=None):
+   def estab_platform(self,plat_name,x,y,z,tilts=None,date=None):
        """
        Define x,y,z observation locations for platform
        Defines platform name (for long-term storage in dictionary)
@@ -103,7 +69,10 @@ class obs_plat(object):
           z        :   The z-location of the platform  int
 
        Optional inputs:
-          tilts    :   Array of defined radar tiles [ntilt]                       
+          tilts    :   Array of defined radar tiles [ntilt] 
+
+          date     :   An array with defined time information
+                       [year,month,day,hour,minute,second]
        """
        self.platform = {}
        self.xloc = x
@@ -122,6 +91,15 @@ class obs_plat(object):
           self.tilts = tilts
           self.ntilt = len(tilts)
           self.obs[self.plat_name]['tilts'] = self.tilts
+
+       #--- Setting observation time
+       for tindex,time in enumerate(self.time_str):
+         if date is not None:          #--- Manually Input Date
+            self.date[time] = date[tindex]
+         elif hasattr(self,'model'):    #--- Grab time from model output
+            self.date[time] = self.model[time]
+         else:                         #--- Establish with None
+            self.date[time] = None
 
    def obloc(self):
       """
@@ -180,15 +158,15 @@ class obs_plat(object):
             p = interp.point_interp(self.model,'p',xloc,yloc,zloc)
             pt = interp.point_interp(self.model,'pt',xloc,yloc,zloc)
             self.ob[zindex] = fwdop.theta_to_temp(pt,p)
-            print('JDL Come Back to Make sure you dont have to keep Temperature in Kelvin')
+            #print('JDL Come Back to Make sure you dont have to keep Temperature in Kelvin')
 
          elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
             self.ob[zindex] = interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            print('JDL Come Back to Make Sure the Assimilated units of pressure is correct')
+            #print('JDL Come Back to Make Sure the Assimilated units of pressure is correct')
 
          elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M']: #--- JDL Does CM1 use qv or specific humidity?
             self.ob[zindex] = interp.point_interp(self.model,'qv',xloc,yloc,zloc)
-            print('JDL Come Back to Make sure you dont have to convert to specific humidity') 
+            #print('JDL Come Back to Make sure you dont have to convert to specific humidity') 
 
          else:
             print('Observation Unknown: %s'%varname)
@@ -299,44 +277,10 @@ def obcode():
    Returns
      obcode - A dictionary that contains the observation code numbers
    """
-   lines = open('/work/jonathan.labriola/python_scripts/pyDART/data/DART_obs.csv','r')
+   lines = open('./data/DART_obs.csv','r')
    obcode = {}
    for lindex, line in enumerate(lines):
       if lindex > 0:
          ln = line.split(', ')
          obcode[ln[0]] = int(ln[-1])
    return obcode
-
-#---Step 6 Create NetCDF file
-#fn = 'radar_obs.nc'
-#wrtfile = Dataset(fn, 'w', format='NETCDF4')
-#if 'nx2' in mem:
-#  wrtfile.setncattr('nx',mem['nx2'])
-#  wrtfile.setncattr('ny',mem['ny2'])
-#else:
-#  wrtfile.setncattr('nx',mem['nx'])
-#  wrtfile.setncattr('ny',mem['ny'])
-#wrtfile.setncattr('ntilt',ntilt)
-#wrtfile.setncattr('nrdr',nrdr)
-#if 'nx2' in mem:
-#   wrtfile.createDimension('yh', mem['ny2'])
-#   wrtfile.createDimension('xh', mem['nx2'])
-#else:
-#   wrtfile.createDimension('yh', mem['ny'])
-#   wrtfile.createDimension('xh', mem['nx'])
-#wrtfile.createDimension('tilts', ntilt)
-#wrtfile.createDimension('radars', nrdr)
-#
-#for key in rdrobs.keys():
-#   wrtfile.createVariable(key, 'f4', ('radars','tilts','yh','xh'))
-#   wrtfile.variables[key][:,:,:,:] = rdrobs[key][:,:,:,:]
-#   if key in ['dbz','dbzerr']:
-#      wrtfile.variables[key].units = 'dBZ'
-#   elif key in ['vr','vrerr']:
-#      wrtfile.variables[key].units = 'm s^{-1}'
-#   elif key in ['rdrx','rdry','rdrz','x','y','z']:
-#      wrtfile.variables[key].units = 'm'
-#   elif key in ['az','elv']:
-#      wrtfile.variables[key].units = 'radians'
-##
-#wrtfile.close()

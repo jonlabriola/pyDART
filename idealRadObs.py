@@ -1,8 +1,9 @@
 import numpy as np
 import argparse
-import interp,fwdop,observations
-from netCDF4 import Dataset
-import plotting
+import observations, readvar
+#import interp,fwdop,observations
+#from netCDF4 import Dataset
+#import plotting
 import pickle
 #--- These Values Only once an Experiment and can therfore be changed manually to avoid mistakes
 
@@ -44,6 +45,8 @@ arguments = parser.parse_args()
 #=================================#
 #       Start Working Code        #
 #=================================#
+#--- Get Observation Codes
+observation_codes = readvar.obcode()
 
 #--- Create Observation Class for Radars
 radobs = observations.obs_plat('radar',clear_air = clearair_dbz)
@@ -62,65 +65,34 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
 
    #--- Step 3: Call Forward Operator
    radobs.radar_operator()
-   if save_fine_obs: #--- Save fine Observations
-      #--- Save the Fine Observations (dbz)
-      dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
-      dbzerr = np.zeros(radobs.obdbz.shape).fill(dbz_error)   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
-      radobs.addob("fine_z", dbztype, dbzerr, obdbz=True) 
 
-      #--- Save the Fine Observations (vr)
-      vrtype = np.zeros(radobs.obvr.shape).fill(11)       #--- VELOCITY CODE for DART
-      vrerr = np.zeros(radobs.obvr.shape).fill(vr_error)  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
-      radobs.addob("fine_vr", vrtype, vrerr, obvr=True)
+   if superobs : #---Perform Super Obbing if Desired 
+      if save_fine_obs: #--- Save High-Res Obs if Superobbing
+         #--- Save the Fine Observations (dbz)
+         dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
+         dbzerr = np.zeros(radobs.obdbz.shape).fill(dbz_error)   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
+         radobs.addob("fine_z", dbztype, dbzerr, obdbz=True) 
 
-   #--- Step 4: Filter Observations to Coarse Grid
-   if superobs:
-#      #--- First Save the High-Resolution Observations
-       radobs.superobs(nskip,roi=roi)
-   
-       dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
-       dbzerr = np.zeros(radobs.obdbz.shape).fill(dbz_error)   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
-       radobs.addob("superob_z", dbztype, dbzerr, obdbz=True)
+         #--- Save the Fine Observations (vr)
+         vrtype = np.zeros(radobs.obvr.shape).fill(11)       #--- VELOCITY CODE for DART
+         vrerr = np.zeros(radobs.obvr.shape).fill(vr_error)  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
+         radobs.addob("fine_vr", vrtype, vrerr, obvr=True)
 
-       vrtype = np.zeros(radobs.obvr.shape).fill(11)       #--- VELOCITY CODE for DART
-       vrerr = np.zeros(radobs.obvr.shape).fill(vr_error)  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
-       radobs.addob("superob_vr", vrtype, vrerr, obvr=True) 
+      #--- Step 4: Filter Observations to Coarse Grid
+      radobs.superobs(nskip,roi=roi)
 
+
+   #--- JDL Eventually Split Up - REFLECTIVITY/CLEAR AIR REFLECITIVITY
+   varname = 'RADAR_REFLECTIVITY'
+   code = observation_codes[varname]
+   dbztype = np.ones(radobs.obdbz.shape)*code         #--- REFLECTIVITY CODE for DART
+   dbzerr  = np.ones(radobs.obdbz.shape)*dbz_error   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
+   radobs.addob(varname, dbztype, dbzerr, obdbz=True)
+
+   varname = 'DOPPLER_RADIAL_VELOCITY'
+   code = observation_codes[varname]    
+   vrtype = np.zeros(radobs.obvr.shape)*code       #--- VELOCITY CODE for DART
+   vrerr = np.zeros(radobs.obvr.shape)*vr_error  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
+   radobs.addob("DOPPLER_RADIAL_VELOCITY", vrtype, vrerr, obvr=True) 
 
 pickle.dump(radobs,open(output_path, "wb" ) )
-#test_obj = pickle.load(open("radarobs.p", "rb" ))
-
-
-#---Step 6 Create NetCDF file
-#fn = 'radar_obs.nc'
-#wrtfile = Dataset(fn, 'w', format='NETCDF4')
-#if 'nx2' in mem:
-#  wrtfile.setncattr('nx',mem['nx2'])
-#  wrtfile.setncattr('ny',mem['ny2'])
-#else:
-#  wrtfile.setncattr('nx',mem['nx'])
-#  wrtfile.setncattr('ny',mem['ny'])
-#wrtfile.setncattr('ntilt',ntilt)
-#wrtfile.setncattr('nrdr',nrdr)
-#if 'nx2' in mem:
-#   wrtfile.createDimension('yh', mem['ny2'])
-#   wrtfile.createDimension('xh', mem['nx2'])
-#else:
-#   wrtfile.createDimension('yh', mem['ny'])
-#   wrtfile.createDimension('xh', mem['nx'])
-#wrtfile.createDimension('tilts', ntilt)
-#wrtfile.createDimension('radars', nrdr)
-#
-#for key in rdrobs.keys():
-#   wrtfile.createVariable(key, 'f4', ('radars','tilts','yh','xh'))
-#   wrtfile.variables[key][:,:,:,:] = rdrobs[key][:,:,:,:]
-#   if key in ['dbz','dbzerr']:
-#      wrtfile.variables[key].units = 'dBZ'
-#   elif key in ['vr','vrerr']:
-#      wrtfile.variables[key].units = 'm s^{-1}'
-#   elif key in ['rdrx','rdry','rdrz','x','y','z']:
-#      wrtfile.variables[key].units = 'm'
-#   elif key in ['az','elv']:
-#      wrtfile.variables[key].units = 'radians'
-##
-#wrtfile.close()

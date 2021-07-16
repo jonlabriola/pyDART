@@ -2,7 +2,7 @@ import numpy as np
 import argparse
 #import interp,fwdop
 #from netCDF4 import Dataset
-import observations
+import observations,readvar
 #import plotting
 import pickle
 #============================================================================#
@@ -62,7 +62,7 @@ parser.add_argument("obs_path", type=str,            help = 'The location of the
 arguments = parser.parse_args()
 
 #--- Step 0: Read in Observation Codes for DA
-observation_codes = observations.obcode() 
+observation_codes = readvar.obcode() 
 #--- Step 1: Generate Conventional Observation Class
 convob = observations.obs_plat('conv')
 #--- Step 2: Read in model information
@@ -156,11 +156,12 @@ if sim_sfc:
          convob.addob(obvar,obtype,oberr)  
 
 #--- Short Snippet to Plot out Variables
+print('The date is ...',convob.date)
 obs_plat = convob.obs.keys()
 for platform in obs_plat:
    print('Platform = ',platform)
-   data = convob.obs[platform].keys()
-   for data_ind in data:
-     print('stored data includes...',data_ind) 
+#   data = convob.obs[platform].keys()
+#   for data_ind in data:
+#     print('stored data includes...',data_ind) 
    
 pickle.dump(convob,open(output_path, "wb" ) )
