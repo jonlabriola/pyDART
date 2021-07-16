@@ -7,16 +7,15 @@ There are four primary goals supported by this package:
 
    a.) idealRadObs.py - Generates simulated radar observations (vr/dBZ) at the specified locations
 
-       generates radar observation file that contains full volume scans from different radars
+       generates radar observation class that contains full volume scans from different radars
    b.) idealConvObs.py - Generates conventional observations at specified locatiosn
    			 includes surface stations, profilers, soundings  
-       generates conventional observation file that contains soundings, profilers, and surface obs
+       generates conventional observation class that contains soundings, profilers, and surface obs
 
-2.) Combine all unique observations into a single netcdf file
-   
+   Both programs save pickle files of the class instance, which are then used to produce the subsequent radar observations
 
-2.) Convert the combined NetCDF file into an observation sequence file (hdf2ascii)
+2.) Convert the combined radar and conventional observations classes into an observation sequence file (hdf2ascii)
    -hdf2ascii program used to do this
 
-3.) Convert the observation sequence file back into 
+3.) Convert the observation sequence file back and place into observation class for appropriate time 
    -ascii2hdf program used to do this
