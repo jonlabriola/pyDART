@@ -22,7 +22,7 @@ if case_type == 'idealized':     #--- Must Explicitly List All Parameters
    dbz_error = 6.0               #--- dBZ Error (dBZ)
    save_fine_obs = True          #--- Flag to save fine observations (in addition to coarse obs)
    nrdr = len(xloc)
-   output_path = 'radar_obs.pickle' #--- Output Radar Observation Object into a Pickle File
+   output_path = './output/radar_obs.pickle' #--- Output Radar Observation Object into a Pickle File
 else:  #--- A Real-Data Case
    print('Work on this at a later time')
 
@@ -61,7 +61,7 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    radobs.obloc()  
 
    #--- Step 3: Call Forward Operator
-   radobs.forward_operator('zvr')
+   radobs.radar_operator()
    if save_fine_obs: #--- Save fine Observations
       #--- Save the Fine Observations (dbz)
       dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
