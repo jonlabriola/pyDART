@@ -2,7 +2,7 @@ import numpy as np
 import argparse
 #import interp,fwdop
 #from netCDF4 import Dataset
-import inout
+import observations
 #import plotting
 import pickle
 #============================================================================#
@@ -15,12 +15,12 @@ import pickle
 #  Once complete the observations and necesary meta data will be saved 
 #  within a netCDF file for later analysis
 
-
 #--- These Values Only once an Experiment and can therfore be changed manually to avoid mistakes
 sim_snd = True   # Simulate soundings
 sim_sfc = True   # Simulate surface obs
 sim_pro = True   # Simulate profilers
 output_path = './output/conventional_obs.pickle' #--- Save conventional observations here 
+missing_value = -9999.0
 if sim_snd:
    #--- Block 1: Sounding
    xsnd = [30000,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
@@ -62,9 +62,9 @@ parser.add_argument("obs_path", type=str,            help = 'The location of the
 arguments = parser.parse_args()
 
 #--- Step 0: Read in Observation Codes for DA
-observation_codes = inout.obcode() 
+observation_codes = observations.obcode() 
 #--- Step 1: Generate Conventional Observation Class
-convob = inout.obs_plat('conv')
+convob = observations.obs_plat('conv')
 #--- Step 2: Read in model information
 convob.readmod('cm1',arguments.obs_path)
 
@@ -79,7 +79,6 @@ if sim_snd:
       convob.estab_platform(platform_name,xsnd[ob],ysnd[ob],zsnd[ob])
       #--- Loop over the sounding profiles for each observation
       for oindex,obvar in enumerate(snd_obs):
-      
          #--- Define observation locations
          hgts = np.arange(zsnd[ob],zmax,zincr)
          hgts = hgts[np.where(hgts > min_hgt)] #--- Throw out all heights less than min model height 
@@ -100,10 +99,6 @@ if sim_pro:
       #---STEP 3:  Define Sounding Information
       platform_name = 'pro_%03d'%(ob+1)
       convob.estab_platform(platform_name,xpro[ob],ypro[ob],zpro[ob])
-
-      print('Profile x loc = ',convob.xloc)
-      print('Profile y loc = ',convob.yloc)
-      print('Profile z loc = ',convob.zloc)
       #--- Loop over the sounding profiles for each observation
       for oindex,obvar in enumerate(pro_obs):
 
@@ -130,6 +125,7 @@ if sim_sfc:
       convob.estab_platform(platform_name,xsfc[ob],ysfc[ob],zsfc[ob])
       #--- Loop over the sounding profiles for each observation
       for oindex,obvar in enumerate(sfc_obs):
+
          #--- Define Height above ground 
          if obvar in ['TEMPERATURE_2M','SPECIFIC_HUMIDITY_2M']:
             if (2.+convob.zloc) > min_hgt:
@@ -159,7 +155,7 @@ if sim_sfc:
          obtype = np.ones(hgts.shape)*observation_codes[obvar]
          convob.addob(obvar,obtype,oberr)  
 
-
+#--- Short Snippet to Plot out Variables
 obs_plat = convob.obs.keys()
 for platform in obs_plat:
    print('Platform = ',platform)
@@ -168,4 +164,3 @@ for platform in obs_plat:
      print('stored data includes...',data_ind) 
    
 pickle.dump(convob,open(output_path, "wb" ) )
-#print(convob.obs['pro_001']) 

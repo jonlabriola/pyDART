@@ -1,6 +1,6 @@
 import numpy as np
 import argparse
-import interp,fwdop,inout
+import interp,fwdop,observations
 from netCDF4 import Dataset
 import plotting
 import pickle
@@ -46,7 +46,7 @@ arguments = parser.parse_args()
 #=================================#
 
 #--- Create Observation Class for Radars
-radobs = inout.obs_plat('radar',clear_air = clearair_dbz)
+radobs = observations.obs_plat('radar',clear_air = clearair_dbz)
 
 #--- Open Model State Variables
 radobs.readmod('cm1',arguments.obs_path)
