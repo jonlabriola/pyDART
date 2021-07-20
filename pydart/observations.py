@@ -35,7 +35,6 @@ class obs_plat(object):
       self.obz = None
       self.missing = -9999.
 
-
       #--- Adding Radar Specific Constants
       if obtype =='radar':
         #--- Add a variable to delineate clear_air
