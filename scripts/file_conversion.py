@@ -1,4 +1,4 @@
-import pickle, readvar, numpy, sequence, os
+import pickle, numpy, pydart, os
 import numpy as np
 
 #--- Convert either observation class to obs_sequence file 
@@ -12,35 +12,26 @@ create_sequence = True
 create_class = False 
 types = ['radar','conventional']
 
-radar_class = './output/radar_obs.pickle' 
-#conv_class = './output/conv_obs_200905160138.pickle'
+radar_class = 'output/radar_obs_200905160138.pickle'
 conv_class = './output/conv_obs_200905152228.pickle'
 
 obname = []
 obcode = []
-obs_codes = readvar.obcode() 
+obs_codes = pydart.readvar.obcode() 
 dart_obs = obs_codes.keys() #--- A List of the different observation names
 #--- Observation Sequence File Should Not Exist
 
-nobs = 0 
+#--- JDL Conducting a Test
 conv = pickle.load(open(conv_class,"rb"))
-for platform in conv.obs.keys():          #--- Loop over platforms
-   for key in conv.obs[platform]:         #--- Loop over saved values
-      if key in dart_obs:
-         nobs += np.size(conv.obs[platform][key]['obs'])
-         if key in obname:
-            pass
-         else:
-            obname.append(key)
-            obcode.append(obs_codes[key])
-
-
-radar_class = 'output/radar_obs_200905160138.pickle'
 radar = pickle.load(open(radar_class,"rb"))
-for platform in radar.obs.keys():          #--- Loop over platforms
-   for key in radar.obs[platform]:         #--- Loop over saved values
+observations = {**radar.obs, **conv.obs} #--- Merge Observation Dictionaries
+
+
+nobs = 0 
+for platform in observations.keys():          #--- Loop over platforms
+   for key in observations[platform]:         #--- Loop over saved values
       if key in dart_obs:
-         nobs += np.size(radar.obs[platform][key]['obs'])
+         nobs += np.size(observations.obs[platform][key]['obs'])
          if key in obname:
             pass
          else:
@@ -58,5 +49,5 @@ try:
 except:
   print('File does not exist')
 file1 = open(filepath,"w")
-sequence.add_header(file1,obname,obcode,nobs)
+pydart.sequence.add_header(file1,obname,obcode,nobs)
 file1.close()

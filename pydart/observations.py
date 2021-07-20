@@ -1,4 +1,5 @@
-import interp,fwdop,readvar
+#import interp,fwdop,readvar
+import pydart
 import datetime as dt
 from netCDF4 import Dataset
 import numpy as np
@@ -53,7 +54,7 @@ class obs_plat(object):
       """
       #--- Create a dictionary Array of Model Output
       if model.upper() == 'CM1':
-         self.model = readvar.read_cm1(path,self.time_str)
+         self.model = pydart.readvar.read_cm1(path,self.time_str)
       else:
          print('Add Capabilities to read other models')
 
@@ -107,7 +108,7 @@ class obs_plat(object):
       Must run estab_platform to define radar location first
       """
       if self.obtype == 'radar':
-         self.obx,self.oby,self.obz,self.elv,self.az = interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts)     
+         self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts)     
       else:
          print('Other observations types are not accomodated yet')
 
@@ -149,23 +150,23 @@ class obs_plat(object):
          yloc = self.oby[zindex]
    
          if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M']:
-            self.ob[zindex] = interp.point_interp(self.model,'u',xloc,yloc,zloc)
+            self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
 
          elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M']:
-            self.ob[zindex] = interp.point_interp(self.model,'v',xloc,yloc,zloc)    
+            self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
 
          elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M']:
-            p = interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            pt = interp.point_interp(self.model,'pt',xloc,yloc,zloc)
-            self.ob[zindex] = fwdop.theta_to_temp(pt,p)
+            p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+            self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
             #print('JDL Come Back to Make sure you dont have to keep Temperature in Kelvin')
 
          elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
-            self.ob[zindex] = interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
             #print('JDL Come Back to Make Sure the Assimilated units of pressure is correct')
 
          elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M']: #--- JDL Does CM1 use qv or specific humidity?
-            self.ob[zindex] = interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+            self.ob[zindex] = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
             #print('JDL Come Back to Make sure you dont have to convert to specific humidity') 
 
          else:
@@ -180,10 +181,10 @@ class obs_plat(object):
          dbz_only: A string of the observation to generatee
       """
       if dbz_only:
-         self.obdbz = fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
+         self.obdbz = pydart.fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
                                             clear_dbz = self.clearair,cartesian=True,dbzOnly=True)
       else:
-         self.obvr,self.obdbz = fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
+         self.obvr,self.obdbz = pydart.fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
                                             clear_dbz = self.clearair,cartesian=True) 
 
 
@@ -209,8 +210,8 @@ class obs_plat(object):
       self.elv = self.elv[:,::nskip,::nskip]
 
       #--- Perform cressman interpolation for each radar tilt
-      self.obdbz = interp.cressman(fine_x,fine_y,fine_dbz,self.obx,self.oby,roi)
-      self.obvr  = interp.cressman(fine_x,fine_y,fine_vr,self.obx,self.oby,roi)
+      self.obdbz = pydart.interp.cressman(fine_x,fine_y,fine_dbz,self.obx,self.oby,roi)
+      self.obvr  = pydart.interp.cressman(fine_x,fine_y,fine_vr,self.obx,self.oby,roi)
 
 
    def addob(self,obname,obtype,error,obdbz=False,obvr=False):

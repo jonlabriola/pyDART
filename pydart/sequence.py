@@ -1,3 +1,4 @@
+#--- This module is used to read and output obs_sequence files
 def add_header(txtfile,obname,obcode,nob):
    """
    This function is used to generate the text header 
@@ -39,13 +40,43 @@ def add_header(txtfile,obname,obcode,nob):
    txtfile.write("  num_obs:            %d  max_num_obs:            %d\n"%(nob,nob))
    txtfile.write("observations\n")
    txtfile.write("truth\n")
-   txtfile.write("Quality Control\n")
+   txtfile.write("Platform Number\n") #--- Reference Number for Ob Platform
+   txtfile.write("Quality Control\n")    #--- Quality Control
    txtfile.write("  first:            %d  last:       %d\n"%(1,nob))
 
-#def add_entry():
+#def add_entries(txtfile,observation):
 #   """ 
-#   Add an entry to the observation Sequence File
+#   This function is used to add an observation entry to the obs_sequence file. 
+#   
+#   Required Entries 
+#      txtfile     -  The ASCII txtfile used to print out info
+#      observation -  A nested dictionary created by the observation class used
+#                     to provide observation information
+#
 #   """ 
+#   #--- Radial Wind Observaitions Require Special Output
+#   #--- JDL You May need to make a seeded random number generator
+#   nob = 0
+#
+#   for platform  in observation.keys():
+#      fobname in in observation[platform].keys():
+#         i
+#
+#         for oindex,ob in enumerate(obsveration[platform][obname]['obs'].flatten()):
+#            txtfile.write(" OBS            %d\n"%nob)
+#            txtfile.write(" %d\n"%ob) #--- JDK One of these includes errors find out which one, and how to treat
+##            txtfile.write(" %d\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
+#            txtfile.write(" %d\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
+#            txtfile.write(" %d\n"%obsveration[platform][obname]['missing_flag'].flatten()[oinidex]) #--- Quality Control Flag     
+#            #--- JDL After The Missing flag there are three integers, what do they mean?
+#            if obsveration[platform][obname]['obstype'] == 36:
+#   
+#
+#
+#      else:
+
+
+
 #   if ascii == None:
 #         fi = open(self.ascii[:-4]+".tmp.out", "w")
 #        else:

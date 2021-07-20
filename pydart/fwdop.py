@@ -1,5 +1,5 @@
 #--- Code for Forward Operators Used to Calculate Observations
-import interp
+import pydart
 import numpy as np
 import math
 
@@ -104,24 +104,24 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
          if cartesian: #--- Use x/y/z Coordinates
             if xloc[k,j,i] != ixloc:
                ixloc = xloc[k,j,i]
-               i1, i2, dx1, dx2, dx = interp.interp_wghts(ixloc, mxlocs)
+               i1, i2, dx1, dx2, dx = pydart.interp.interp_wghts(ixloc, mxlocs)
             if yloc[k,j,i] != iyloc:
                iyloc = yloc[k,j,i]
-               j1, j2, dy1, dy2, dy = interp.interp_wghts(iyloc, mylocs)
+               j1, j2, dy1, dy2, dy = pydart.interp.interp_wghts(iyloc, mylocs)
             if height[k,j,i] != ihgt:
               ihgt = height[k,j,i]
-              k1, k2, dz1, dz2, dz = interp.interp_wghts(ihgt, mhgts)
+              k1, k2, dz1, dz2, dz = pydart.interp.interp_wghts(ihgt, mhgts)
 
          else: #--- Use Lat/Lon Coordinates
             if lon[k,j,i] != ilon:
               ilon = lon[k,j,i]
-              i1, i2, dx1, dx2, dx = interp.interp_wghts(ilon, mlons)
+              i1, i2, dx1, dx2, dx = pydart.interp.interp_wghts(ilon, mlons)
             if lat[k,j,i] != ilat:
               ilat = lat[k,j,i]
-              j1, j2, dy1, dy2, dy = interp.interp_wghts(ilat, mlats)
+              j1, j2, dy1, dy2, dy = pydart.interp.interp_wghts(ilat, mlats)
             if height[n] != ihgt:
               ihgt = height[k,j,i]
-              k1, k2, dz1, dz2, dz = interp.interp_wghts(ihgt, mhgts)
+              k1, k2, dz1, dz2, dz = pydart.interp.interp_wghts(ihgt, mhgts)
 
          if i1 < 0 or j1 < 0 or k1 < 0:  continue
 

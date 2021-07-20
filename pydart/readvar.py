@@ -1,8 +1,8 @@
 import datetime as dt
 from netCDF4 import Dataset
-import interp
+import pydart
 import numpy as np
-
+import pkg_resources
 #--- This module is designed to read in external information including model output,
 #--- and text files
 
@@ -31,7 +31,7 @@ def read_cm1(path,time_str=None):
          if var in ['ua']: unstag_ax = 2 #--- x-axis
          if var in ['va']: unstag_ax = 1 #--- y-axis
          if var in ['wa']: unstag_ax = 0 #--- z-axis
-         var_tmp = interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
+         var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
          var_tmp = var_tmp[:,ymin:ymax,xmin:xmax]
       else: #--- No Staggered Grids
          var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
@@ -74,7 +74,9 @@ def obcode():
    Returns
      obcode - A dictionary that contains the observation code numbers
    """
-   lines = open('./data/DART_obs.csv','r')
+   #lines = open('./data/DART_obs.csv','r')
+   filepath = pkg_resources.resource_filename('pydart','data/DART_obs.csv')
+   lines = open(filepath)
    obcode = {}
    for lindex, line in enumerate(lines):
       if lindex > 0:

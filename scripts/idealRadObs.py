@@ -1,9 +1,10 @@
 import numpy as np
 import argparse
-import observations, readvar
+#import observations, readvar
 #import interp,fwdop,observations
 #from netCDF4 import Dataset
 #import plotting
+import pydart
 import pickle
 #--- These Values Only once an Experiment and can therfore be changed manually to avoid mistakes
 
@@ -46,10 +47,10 @@ arguments = parser.parse_args()
 #       Start Working Code        #
 #=================================#
 #--- Get Observation Codes
-observation_codes = readvar.obcode()
+observation_codes = pydart.readvar.obcode()
 
 #--- Create Observation Class for Radars
-radobs = observations.obs_plat('radar',clear_air = clearair_dbz)
+radobs = pydart.observations.obs_plat('radar',clear_air = clearair_dbz)
 
 #--- Open Model State Variables
 radobs.readmod('cm1',arguments.obs_path)
@@ -57,7 +58,7 @@ radobs.readmod('cm1',arguments.obs_path)
 for rdr in range(0,nrdr): #--- Loop over State Variables
 
    #---Step 1: Define the Observation Platform
-   platform_name = 'radar%02d'%(rdr+1)
+   platform_name = 'radar_%03d'%(rdr+1)
    radobs.estab_platform(platform_name,xloc[rdr],yloc[rdr],hgt[rdr],tilts)
 
    #--- Step 2: Calculate Radar Observation Locations in volume

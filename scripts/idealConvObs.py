@@ -2,8 +2,9 @@ import numpy as np
 import argparse
 #import interp,fwdop
 #from netCDF4 import Dataset
-import observations,readvar
+#import observations,readvar
 #import plotting
+import pydart
 import pickle
 #============================================================================#
 #  This program is designed to generate conventional observations from CM1 
@@ -19,7 +20,7 @@ import pickle
 sim_snd = True   # Simulate soundings
 sim_sfc = True   # Simulate surface obs
 sim_pro = True   # Simulate profilers
-output_path = './output/' #--- Save conventional observations here 
+output_path = '../output/' #--- Save conventional observations here 
 missing_value = -9999.0
 if sim_snd:
    #--- Block 1: Sounding
@@ -62,9 +63,9 @@ parser.add_argument("obs_path", type=str,            help = 'The location of the
 arguments = parser.parse_args()
 
 #--- Step 0: Read in Observation Codes for DA
-observation_codes = readvar.obcode() 
+observation_codes = pydart.readvar.obcode() 
 #--- Step 1: Generate Conventional Observation Class
-convob = observations.obs_plat('conv')
+convob = pydart.observations.obs_plat('conv')
 #--- Step 2: Read in model information
 convob.readmod('cm1',arguments.obs_path)
 
