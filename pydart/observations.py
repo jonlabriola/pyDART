@@ -28,7 +28,7 @@ class obs_plat(object):
    def __init__(self,obtype,**kwargs):
       self.obtype = obtype
       self.obs = {}  #--- The longterm storage dictionaries for observations
-      self.date = {} #--- Establish a date
+      #self.date = {} #--- Establish a date
       self.time_str = ['year','month','day','hour','minute','second'] #--- order time is read
       self.obx = None
       self.oby = None
@@ -79,7 +79,8 @@ class obs_plat(object):
        self.yloc = y
        self.zloc = z
        self.plat_name = plat_name
-   
+         
+ 
        #--- Save Platform Information in Dictionary      
        self.obs[self.plat_name] = {}
        self.obs[self.plat_name]['plat_x']  = self.xloc
@@ -93,13 +94,16 @@ class obs_plat(object):
           self.obs[self.plat_name]['tilts'] = self.tilts
 
        #--- Setting observation time
+       self.obs[self.plat_name]['date'] = {}
        for tindex,time in enumerate(self.time_str):
+         
+
          if date is not None:          #--- Manually Input Date
-            self.date[time] = date[tindex]
+            self.obs[self.plat_name][time] = date[tindex]
          elif hasattr(self,'model'):    #--- Grab time from model output
-            self.date[time] = self.model[time]
+            self.obs[self.plat_name][time] = self.model[time]
          else:                         #--- Establish with None
-            self.date[time] = None
+            self.obs[self.plat_name][time] = None
 
    def obloc(self):
       """

@@ -1,6 +1,7 @@
 #--- This module is used to read and output obs_sequence files
 import os
 import numpy as np
+import datetime as dt
 class create_sequence():
    def __init__(self,filepath):
       try:
@@ -68,6 +69,7 @@ class create_sequence():
       #--- Radial Wind Observaitions Require Special Output
       #--- JDL You May need to make a seeded random number generator
       nob = 0
+      init_time = dt.datetime(1601,1,1,0,0,0)
       for platform  in observation.keys():
          for obname in observation[platform].keys():
             if obname in self.obnames:
@@ -78,6 +80,15 @@ class create_sequence():
                 obtype = observation[platform][obname]['obstype'].flatten()
                 error = observation[platform][obname]['error'].flatten()
                 missing = observation[platform][obname]['missing_flag'] #---  Value for missing flag
+           
+                #--- JDL Automate Here to (pass date through class or function?_
+                print(observation[platform].keys())  
+                curr_time = dt.datetime(2021,7,20,18,12,0)
+
+                delta = curr_time - init_time
+                days = int(delta.days)
+                seconds = int(delta.seconds)
+ 
                 for oindex,ob in enumerate(observations):
                    if np.isnan(ob): 
                       ob = 0
@@ -108,7 +119,20 @@ class create_sequence():
                    self.txtfile.write("     %d        %d         %d      3\n"%(obx,oby,obz))
                    self.txtfile.write("kind\n")
                    self.txtfile.write("          %d\n"%int(obtype[oindex])) 
-                   nob += 1    
+
+
+
+                   #fi.write("    %d          %d     \n" % (row["seconds"], row["days"])
+
+
+                   #nob += 1    
+
+
+
+
+
+
+
             #if observation[platform][obname]['obstype'] == 36:
       #else:
       self.txtfile.close()
