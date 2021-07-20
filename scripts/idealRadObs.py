@@ -24,7 +24,7 @@ if case_type == 'idealized':     #--- Must Explicitly List All Parameters
    dbz_error = 6.0               #--- dBZ Error (dBZ)
    save_fine_obs = True          #--- Flag to save fine observations (in addition to coarse obs)
    nrdr = len(xloc)
-   output_path = './output/' #--- Output Radar Observation Object into a Pickle File
+   output_path = '../output/' #--- Output Radar Observation Object into a Pickle File
 else:  #--- A Real-Data Case
    print('Work on this at a later time')
 

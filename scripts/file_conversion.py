@@ -12,8 +12,8 @@ create_sequence = True
 create_class = False 
 types = ['radar','conventional']
 
-radar_class = 'output/radar_obs_200905160138.pickle'
-conv_class = './output/conv_obs_200905152228.pickle'
+radar_class = '../output/radar_obs_200905160138.pickle'
+conv_class =  '../output/conv_obs_200905160138.pickle'
 
 obname = []
 obcode = []
@@ -31,7 +31,7 @@ nobs = 0
 for platform in observations.keys():          #--- Loop over platforms
    for key in observations[platform]:         #--- Loop over saved values
       if key in dart_obs:
-         nobs += np.size(observations.obs[platform][key]['obs'])
+         nobs += np.size(observations[platform][key]['obs'])
          if key in obname:
             pass
          else:
@@ -44,7 +44,7 @@ print('Observation name = ',obname)
 
 #--- Sequence Files
 try:
-  filepath = "./output/obsequence.txt"
+  filepath = "../output/obsequence.txt"
   os.system('rm %s'%filepath)
 except:
   print('File does not exist')
