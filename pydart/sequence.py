@@ -2,6 +2,9 @@
 import os
 import numpy as np
 import datetime as dt
+import pydart
+
+
 class create_sequence():
    def __init__(self,filepath):
       try:
@@ -9,9 +12,43 @@ class create_sequence():
       except:
          print('obs_sequence file does not exist')
       self.txtfile = open(filepath,"w")
-   
+ 
+      #--- A list of all available DART Observations
+      self.obs_codes = pydart.readvar.obcode() #--- Listed Observations
+      self.dart_obs  = self.obs_codes.keys()   #--- Observation Names
 
-   def add_header(self,obname,obcode,nob):
+      #--- Obs information
+      self.nob = None
+      self.obname = None
+      self.obcode = None 
+
+ 
+   def obinfo(self,observations):
+      """
+      Get observation information for the sequence file including the number of
+      assimilated observations
+   
+      Required input:
+         Observations - A dictionary of the different assimilated observations
+
+      """
+
+      nobs = 0
+      self.obname = []
+      self.obcode = []
+
+      for platform in observations.keys():          #--- Loop over platforms
+         for key in observations[platform]:         #--- Loop over saved values
+            if key in self.dart_obs:
+               nobs += np.size(observations[platform][key]['obs'])
+               if key in self.obname:
+                  pass
+               else:
+                  self.obname.append(key)
+                  self.obcode.append(self.obs_codes[key]) 
+      self.nob = nobs
+
+   def add_header(self,observations):#,obname,obcode):
       """
       This function is used to generate the text header 
       in the observation sequence file 
@@ -30,32 +67,35 @@ class create_sequence():
 
       Required inputs:
          txtfile - An opened ascii text file
-         obname  - The listed available observations
-         obcode  - An array of the DART observation codes
-         nob     - The total number of observations (assimilated and flagged)
+         self.obname  - The listed available observations
+         self.obcode  - An array of the DART observation codes
+         self.nob     - The total number of observations (assimilated and flagged)
 
       """
-      nobtype = len(obname)
-      self.nob = nob
-      self.obnames = obname
+      #--- Gather Observation Information If not Available
+      if self.obname is None:
+         self.obinfo(observations)
+
+
+      nobtype = len(self.obname)
       self.txtfile.write("obs_sequence\n")
       self.txtfile.write("obs_kind_definitions\n")
-      self.txtfile.write("           %s\n"%len(obname))
+      self.txtfile.write("           %s\n"%nobtype)
    
       print('The number of obs =',nobtype)
 
       #--- Writing out the assimilated ob types   
       for index in range(0,nobtype):
-         self.txtfile.write("          %s %s\n"%(obcode[index],obname[index]))
+         self.txtfile.write("          %s %s\n"%(self.obcode[index],self.obname[index]))
 
       #--- Bottom half 
       self.txtfile.write("  num_copies:            %d  num_qc:            %d\n"%(2,1))  #--- Don't know exactly the purpose of this line
-      self.txtfile.write("  num_obs:            %d  max_num_obs:            %d\n"%(nob,nob))
+      self.txtfile.write("  num_obs:            %d  max_num_obs:            %d\n"%(self.nob,self.nob))
       self.txtfile.write("observations\n")
       self.txtfile.write("truth\n")
       self.txtfile.write("Platform Number\n") #--- Reference Number for Ob Platform
       self.txtfile.write("Quality Control\n")    #--- Quality Control
-      self.txtfile.write("  first:            %d  last:       %d\n"%(1,nob))
+      self.txtfile.write("  first:            %d  last:       %d\n"%(1,self.nob))
 
    def add_entries(self,observation):
       """ 
@@ -68,26 +108,25 @@ class create_sequence():
       """ 
       #--- Radial Wind Observaitions Require Special Output
       #--- JDL You May need to make a seeded random number generator
-      nob = 0
+      obnum = 0
       init_time = dt.datetime(1601,1,1,0,0,0)
       for platform  in observation.keys():
-         for obname in observation[platform].keys():
-            if obname in self.obnames:
-                observations = observation[platform][obname]['obs'].flatten() 
-                xloc = observation[platform][obname]['xloc'].flatten()
-                yloc = observation[platform][obname]['yloc'].flatten()
-                zloc = observation[platform][obname]['zloc'].flatten()
-                obtype = observation[platform][obname]['obstype'].flatten()
-                error = observation[platform][obname]['error'].flatten()
-                missing = observation[platform][obname]['missing_flag'] #---  Value for missing flag
-           
-                #--- JDL Automate Here to (pass date through class or function?_
-                print(observation[platform].keys())  
-                curr_time = dt.datetime(2021,7,20,18,12,0)
+         #--- Grab Observation Date, Calculate Epoch Time
+         date = observation[platform]['date']
+         curr_time = dt.datetime(date['year'],date['month'],date['day'],date['hour'],date['minute'],date['second'])
+         delta = curr_time - init_time
+         days = int(delta.days)
+         seconds = int(delta.seconds)
 
-                delta = curr_time - init_time
-                days = int(delta.days)
-                seconds = int(delta.seconds)
+         for obtype in observation[platform].keys():
+            if obtype in self.obname:
+                observations = observation[platform][obtype]['obs'].flatten() 
+                xloc = observation[platform][obtype]['xloc'].flatten()
+                yloc = observation[platform][obtype]['yloc'].flatten()
+                zloc = observation[platform][obtype]['zloc'].flatten()
+                obcode = observation[platform][obtype]['obstype'].flatten()
+                error = observation[platform][obtype]['error'].flatten()
+                missing = observation[platform][obtype]['missing_flag'] #---  Value for missing flag
  
                 for oindex,ob in enumerate(observations):
                    if np.isnan(ob): 
@@ -102,30 +141,30 @@ class create_sequence():
                       obz = zloc[oindex]  
                       flag = 0.0
 
-                   self.txtfile.write(" OBS            %d\n"%nob)
+                   self.txtfile.write(" OBS            %d\n"%obnum)
                    self.txtfile.write(" %d\n"%ob) #--- JDK One of these includes errors find out which one, and how to treat
                    self.txtfile.write(" %d\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
                    self.txtfile.write(" %d\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
                    self.txtfile.write(" %d\n"%flag) #--- Quality Control Flag     
                    #--- ADDING THREE LOCATION MARKER
-                   if nob == 0:
+                   if obnum == 0:
                       self.txtfile.write("      %d          %d          %d\n"%(-1,2,-1)) 
-                   elif nob == (self.nob - 1): 
-                      self.txtfile.write("      %d          %d          %d\n"%(nob,-1,-1))
+                   elif obnum == (self.nob - 1): 
+                      self.txtfile.write("      %d          %d          %d\n"%(obnum,-1,-1))
                    else:
-                      self.txtfile.write("      %d          %d          %d\n"%(nob,nob+1,-1))
+                      self.txtfile.write("      %d          %d          %d\n"%(obnum,obnum+1,-1))
                    self.txtfile.write("obdef\n")
                    self.txtfile.write("loc3d\n")
                    self.txtfile.write("     %d        %d         %d      3\n"%(obx,oby,obz))
                    self.txtfile.write("kind\n")
-                   self.txtfile.write("          %d\n"%int(obtype[oindex])) 
+                   self.txtfile.write("          %d\n"%int(obcode[oindex])) 
 
 
 
-                   #fi.write("    %d          %d     \n" % (row["seconds"], row["days"])
+                   self.txtfile.write("    %d          %d     \n" % (seconds, days))
 
 
-                   #nob += 1    
+                   obnum += 1    
 
 
 

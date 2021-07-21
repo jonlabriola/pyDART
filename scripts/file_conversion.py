@@ -15,39 +15,14 @@ types = ['radar','conventional']
 radar_class = '../output/radar_obs_200905160138.pickle'
 conv_class =  '../output/conv_obs_200905160138.pickle'
 
-obname = []
-obcode = []
-obs_codes = pydart.readvar.obcode() 
-dart_obs = obs_codes.keys() #--- A List of the different observation names
-#--- Observation Sequence File Should Not Exist
-
-#--- JDL Conducting a Test
+#--- Merge Together Radar/Conventional Observations
 conv = pickle.load(open(conv_class,"rb"))
 radar = pickle.load(open(radar_class,"rb"))
 observations = {**radar.obs, **conv.obs} #--- Merge Observation Dictionaries
 
 
-nobs = 0 
-for platform in observations.keys():          #--- Loop over platforms
-   for key in observations[platform]:         #--- Loop over saved values
-      if key in dart_obs:
-         nobs += np.size(observations[platform][key]['obs'])
-         if key in obname:
-            pass
-         else:
-            obname.append(key)
-            obcode.append(obs_codes[key])
-
-print('Total Assimilated Obser = ',nobs)
-print('Observation name = ',obname)
-
-
-#--- Sequence Files
-try:
-  filepath = "../output/obsequence.txt"
-  os.system('rm %s'%filepath)
-except:
-  print('File does not exist')
-file1 = open(filepath,"w")
-pydart.sequence.add_header(file1,obname,obcode,nobs)
-file1.close()
+#--- Create a Sequence Files
+filepath = '../output/obsequence.txt'
+obsseq = pydart.sequence.create_sequence(filepath)
+obsseq.add_header(observations)   #--- Make Sequence Header
+obsseq.add_entries(observations)  #--- Make Observation Entries
