@@ -157,7 +157,7 @@ if sim_sfc:
          convob.addob(obvar,obtype,oberr)  
 
 #--- Short Snippet to Plot out Variables
-print('The date is ...',convob.date)
+#print('The date is ...',convob.obs[ob]['date'])
 obs_plat = convob.obs.keys()
 for platform in obs_plat:
    print('Platform = ',platform)
@@ -165,5 +165,5 @@ for platform in obs_plat:
 #   for data_ind in data:
 #     print('stored data includes...',data_ind) 
 
-output_path = '%s/conv_obs_%04d%02d%02d%02d%02d.pickle'%(output_path,convob.date['year'],convob.date['month'],convob.date['day'],convob.date['hour'],convob.date['minute'])   
+output_path = '%s/conv_obs_%04d%02d%02d%02d%02d.pickle'%(output_path,convob.model['year'],convob.model['month'],convob.model['day'],convob.model['hour'],convob.model['minute'])   
 pickle.dump(convob,open(output_path, "wb" ) )

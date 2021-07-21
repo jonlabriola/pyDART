@@ -99,11 +99,11 @@ class obs_plat(object):
          
 
          if date is not None:          #--- Manually Input Date
-            self.obs[self.plat_name][time] = date[tindex]
+            self.obs[self.plat_name]['date'][time] = date[tindex]
          elif hasattr(self,'model'):    #--- Grab time from model output
-            self.obs[self.plat_name][time] = self.model[time]
+            self.obs[self.plat_name]['date'][time] = self.model[time]
          else:                         #--- Establish with None
-            self.obs[self.plat_name][time] = None
+            self.obs[self.plat_name]['date'][time] = None
 
    def obloc(self):
       """
