@@ -20,6 +20,7 @@ if case_type == 'idealized':     #--- Must Explicitly List All Parameters
    case_type = 'idealized'       #-- Real Date or Idealized
    clearair_dbz = 10.            #--- Threshold for clear air observations
    #missing = -999.               #--- Value of Missing Observation
+   nyquist = 1.E10               #--- Emulator Currently cannot simulate range folding so make large
    vr_error = 4.0                #--- Vr Error (m/s)
    dbz_error = 6.0               #--- dBZ Error (dBZ)
    save_fine_obs = True          #--- Flag to save fine observations (in addition to coarse obs)
@@ -59,7 +60,7 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
 
    #---Step 1: Define the Observation Platform
    platform_name = 'radar_%03d'%(rdr+1)
-   radobs.estab_platform(platform_name,xloc[rdr],yloc[rdr],hgt[rdr],tilts)
+   radobs.estab_platform(platform_name,xloc[rdr],yloc[rdr],hgt[rdr],tilts,nyquist)
 
    #--- Step 2: Calculate Radar Observation Locations in volume
    radobs.obloc()  
@@ -70,14 +71,14 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    if superobs : #---Perform Super Obbing if Desired 
       if save_fine_obs: #--- Save High-Res Obs if Superobbing
          #--- Save the Fine Observations (dbz)
-         dbztype = np.zeros(radobs.obdbz.shape).fill(13)         #--- REFLECTIVITY CODE for DART
+         dbztype = 13         #--- REFLECTIVITY CODE for DART
          dbzerr = np.zeros(radobs.obdbz.shape).fill(dbz_error)   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
-         radobs.addob("fine_z", dbztype, dbzerr, obdbz=True) 
+         radobs.addob("fine_z", dbzerr, dbztype,  obdbz=True) 
 
          #--- Save the Fine Observations (vr)
-         vrtype = np.zeros(radobs.obvr.shape).fill(11)       #--- VELOCITY CODE for DART
+         vrtype = 11       #--- VELOCITY CODE for DART
          vrerr = np.zeros(radobs.obvr.shape).fill(vr_error)  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
-         radobs.addob("fine_vr", vrtype, vrerr, obvr=True)
+         radobs.addob("fine_vr", vrerr, vrtype, obvr=True)
 
       #--- Step 4: Filter Observations to Coarse Grid
       radobs.superobs(nskip,roi=roi)
@@ -85,16 +86,16 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
 
    #--- JDL Eventually Split Up - REFLECTIVITY/CLEAR AIR REFLECITIVITY
    varname = 'RADAR_REFLECTIVITY'
-   code = observation_codes[varname]
-   dbztype = np.ones(radobs.obdbz.shape)*code         #--- REFLECTIVITY CODE for DART
+   #code = observation_codes[varname]
+   #dbztype = np.ones(radobs.obdbz.shape)*code         #--- REFLECTIVITY CODE for DART
    dbzerr  = np.ones(radobs.obdbz.shape)*dbz_error   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
-   radobs.addob(varname, dbztype, dbzerr, obdbz=True)
+   radobs.addob(varname, dbzerr, obdbz=True)
 
    varname = 'DOPPLER_RADIAL_VELOCITY'
-   code = observation_codes[varname]    
-   vrtype = np.zeros(radobs.obvr.shape)*code       #--- VELOCITY CODE for DART
+   #code = observation_codes[varname]    
+   #vrtype = np.zeros(radobs.obvr.shape)*code       #--- VELOCITY CODE for DART
    vrerr = np.zeros(radobs.obvr.shape)*vr_error  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
-   radobs.addob("DOPPLER_RADIAL_VELOCITY", vrtype, vrerr, obvr=True) 
+   radobs.addob(varname, vrerr, obvr=True) 
 
 output_path = '%s/radar_obs_%04d%02d%02d%02d%02d.pickle'%(output_path,radobs.model['year'],radobs.model['month'],radobs.model['day'],radobs.model['hour'],radobs.model['minute'])
 pickle.dump(radobs,open(output_path, "wb" ) )

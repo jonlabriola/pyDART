@@ -28,12 +28,11 @@ class obs_plat(object):
    def __init__(self,obtype,**kwargs):
       self.obtype = obtype
       self.obs = {}  #--- The longterm storage dictionaries for observations
-      #self.date = {} #--- Establish a date
       self.time_str = ['year','month','day','hour','minute','second'] #--- order time is read
       self.obx = None
       self.oby = None
       self.obz = None
-      self.missing = -9999.
+      self.missing = -99999999.
 
       #--- Adding Radar Specific Constants
       if obtype =='radar':
@@ -44,7 +43,7 @@ class obs_plat(object):
           self.clearair = 0.
         self.az = None
         self.elv = None
-       
+        self.nyquist = None 
 
    #--- Read Model Output (For Forward Operator)
    def readmod(self,model,path):
@@ -57,7 +56,7 @@ class obs_plat(object):
       else:
          print('Add Capabilities to read other models')
 
-   def estab_platform(self,plat_name,x,y,z,tilts=None,date=None):
+   def estab_platform(self,plat_name,x,y,z,tilts=None,nyquist=None,date=None):
        """
        Define x,y,z observation locations for platform
        Defines platform name (for long-term storage in dictionary)
@@ -70,7 +69,7 @@ class obs_plat(object):
 
        Optional inputs:
           tilts    :   Array of defined radar tiles [ntilt] 
-
+          nyquist  :   The nyquist velocity of the radar
           date     :   An array with defined time information
                        [year,month,day,hour,minute,second]
        """
@@ -92,12 +91,10 @@ class obs_plat(object):
           self.tilts = tilts
           self.ntilt = len(tilts)
           self.obs[self.plat_name]['tilts'] = self.tilts
-
+          self.obs[self.plat_name]['nyquist']  = nyquist 
        #--- Setting observation time
        self.obs[self.plat_name]['date'] = {}
        for tindex,time in enumerate(self.time_str):
-         
-
          if date is not None:          #--- Manually Input Date
             self.obs[self.plat_name]['date'][time] = date[tindex]
          elif hasattr(self,'model'):    #--- Grab time from model output
@@ -185,10 +182,10 @@ class obs_plat(object):
       """
       if dbz_only:
          self.obdbz = pydart.fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
-                                            clear_dbz = self.clearair,cartesian=True,dbzOnly=True)
+                                          self.clearair,dbzOnly=True)
       else:
          self.obvr,self.obdbz = pydart.fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
-                                            clear_dbz = self.clearair,cartesian=True) 
+                                                    self.clearair) 
 
 
 
@@ -217,25 +214,26 @@ class obs_plat(object):
       self.obvr  = pydart.interp.cressman(fine_x,fine_y,fine_vr,self.obx,self.oby,roi)
 
 
-   def addob(self,obname,obtype,error,obdbz=False,obvr=False):
+   def addob(self,obname,error,obtype=None,obdbz=False,obvr=False):
       """   
       The saved variables in a nested dictionary array include: 
          obname   :  The name the the observations will be stored under 
                      (same for one type of platform)
          obs      :  The observed values
-         obtype   :  The DART code for the observation
          xloc     :  The x-location of the observation
          yloc     :  The y-location of the observation
          zloc     :  The z-location of the observation
          error    :  The observation error
-         missing_flag   : A flag to tell DART what observations to ignore
+         obtype   :  The DART code for the observation (int)
+         missing_flag   : A flag to tell DART what observations to ignore (float)
 
          Radar Exclusive Variables:
          elevation     :  The radar tilt of the radar    (if needed)
          azimuth       :  The azimuth angle of the radar (if needed)
          clear_air     :  The threshold for clear air obs
 
-      All Variables should have the same dimension except missing_flag
+
+      All Variables should have the same dimension except missing_flag and obtype
 
       The structure of the nested dictionary is as follows:
          dictionary['OBS_PLATFORM']['OBSNAME']['obsx','obsy','obsz'...]
@@ -243,6 +241,13 @@ class obs_plat(object):
       """
       #--- Saving the observation platform location
       self.obs[self.plat_name][obname]  = {}
+      if obtype is None:
+         obcode = pydart.readvar.obcode()
+         try:
+            obtype = obcode[obname]
+         except:
+            print('Warning %s Does Not Exist... Setting to -1'%obname)
+            obtype = -1
 
       #--- Saving Captured Observations (special excpetions for dbz/vr)
       if obdbz :

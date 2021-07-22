@@ -90,8 +90,8 @@ if sim_snd:
 
          #--- Define error / obcode
          oberr =  np.ones(hgts.shape)*snd_err[oindex]
-         obtype = np.ones(hgts.shape)*observation_codes[obvar]
-         convob.addob(obvar,obtype,oberr)
+         obtype = observation_codes[obvar]
+         convob.addob(obvar,oberr)
 
 #--- Simulate Profiler Observations
 if sim_pro:
@@ -114,8 +114,8 @@ if sim_pro:
 
          #--- Define error / DART observation code
          oberr =  np.ones(hgts.shape)*pro_err[oindex]
-         obtype = np.ones(hgts.shape)*observation_codes[obvar]
-         convob.addob(obvar,obtype,oberr)
+         obtype = observation_codes[obvar]
+         convob.addob(obvar,oberr)
 
 #--- Simulate Surface Observations
 if sim_sfc:
@@ -153,8 +153,8 @@ if sim_sfc:
 
          #--- Define error / obcode
          oberr =  np.ones(hgts.shape)*sfc_err[oindex]
-         obtype = np.ones(hgts.shape)*observation_codes[obvar]
-         convob.addob(obvar,obtype,oberr)  
+         #obtype = observation_codes[obvar]
+         convob.addob(obvar,oberr)  
 
 #--- Short Snippet to Plot out Variables
 #print('The date is ...',convob.obs[ob]['date'])

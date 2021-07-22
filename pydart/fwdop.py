@@ -5,7 +5,6 @@ import math
 
 #ens_default_cmap = P.get_cmap('seismic')
 
-_missing = -9900000000.
 _dbz_min = 0.0
 _dbz_max = 75.
 
@@ -13,7 +12,7 @@ _clevels = {'DBZ':[5,75,5], 'W':[-10,11,1], 'TH':[295.,325.,1.], 'THP':[-5,6,0.5
             'WZ': [-100.,120.,20.], 'U':[-20,22,2], 'V':[-20,22,2]}
 
 def calcHx(fcst, xloc, yloc, height, elv, azimuth,
-           cartesian=False,missing=None,clear_dbz=None,dbzOnly=False):
+           clear_dbz=0.0,cartesian=True,dbzOnly=False):
   """
   The Radar Forward Operator Used to Calculate Z and Radial Wind
   Required Arguments
@@ -21,27 +20,25 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
       3.) yloc    - Observation Y-Location (m or Latitude)    [ntilt,ny,nx] (m, degrees lat)
       4.) xloc    - Observation X-Location (m or Longitude)   [ntilt,ny,nx] (m, degrees lon)  
       5.) height  - Observation Height above Surface (m)      [ntilt,ny,nx] (m)
-      6.) elv    - Radar elevation angle                      [ntilt,ny,nx] (radians)
+      6.) elv     - Radar elevation angle                     [ntilt,ny,nx] (radians)
       7.) azimuth - radar azimuth angle                       [ntilt,ny,nx] (radians)
 
-
   Optional Arguments:
+
+     clear_dbz     - What is defined as clear air (remove
+                     vr obs accordingly
      cartesian    -  Are we working with a cartesian grid    [bool]
-     missing      -  Value of a missing observation          [float]
-     clear_dbz    -  What is defined as clear air (remove 
-                     vr obs accordingly                      [float] 
-     dbzOnly      -  Only calculate reflectivity, no Vr      [bool] 
+     dbzOnly      -  Only calculate reflectivity, no Vr      [bool]
+
   """
-  nobs = np.size(yloc) 
   [ntilt,ny,nx] = yloc.shape
-  if missing == None:
-    missing = _missing
 
   if dbzOnly:
-     Hx_Z  = missing * np.ones((ntilt,ny,nx))
+     Hx_Z  = np.nan * np.ones((ntilt,ny,nx))
+
   else:
-     Hx_vr = missing * np.ones((ntilt,ny,nx))
-     Hx_Z  = missing * np.ones((ntilt,ny,nx))
+     Hx_vr = np.nan * np.ones((ntilt,ny,nx))
+     Hx_Z  = np.nan * np.ones((ntilt,ny,nx))
 
   if cartesian: #--- x/y/z coordinates
      yloc = yloc
@@ -54,6 +51,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
      mxlocs = fcst['xh']
      mylocs = fcst['yh']
      mhgts = fcst['zh']
+
 
      print(' calcHx:  OBS   Y-DIS MIN/MAX:  ', np.nanmin(yloc),   np.nanmax(yloc))
      print(' calcHx:  MODEL Y-DIS MIN/MAX:  ', np.nanmin(mylocs), np.nanmax(mylocs))
@@ -89,14 +87,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
     for j in range(0,ny):
       for i in range(0,nx):
          #--- Skip all gridpoints with nan's
-         if np.isnan(xloc[k,j,i]):
-            if dbzOnly:
-               Hx_Z[k,j,i] = np.nan
-            else: 
-               Hx_vr[k,j,i] = np.nan
-               Hx_Z[k,j,i] = np.nan
-            continue
-
+         if np.isnan(xloc[k,j,i]): continue
          # need to acess lat lon alt info of ob loc from table and pass it to tlint
          # check to see if ob position is the same then less work
 
@@ -125,7 +116,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
 
          if i1 < 0 or j1 < 0 or k1 < 0:  continue
 
-         b[:] = missing
+         b[:] = np.nan
 
          if dbzOnly:  # DBZ
             for m, key in enumerate( ["dbz"]):
@@ -141,13 +132,6 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
 
          else:  #DBZ/VR
             for m, key in enumerate( ["u", "v", "w", "dbz", "rho"]):
-               #print(fcst[key].shape)
-               #print('j1 ',j1)
-               #print('i1 ',i1)
-               #print('i2 ',i2)
-               #print('mylocs ',mylocs.shape)
-               #print('mxlocs ',mxlocs.shape)
-               #print('WORK = ',fcst[key].shape)
                q1     = dx1*fcst[key][k1,j1,i1] + dx2*fcst[key][k1,j1,i2]
                q2     = dx1*fcst[key][k1,j2,i1] + dx2*fcst[key][k1,j2,i2]
                vb     = (dy1*q1 + dy2*q2) / ( dx*dy )
@@ -155,6 +139,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
                q2     = dx1*fcst[key][k2,j2,i1] + dx2*fcst[key][k2,j2,i2]
                vt     = (dy1*q1 + dy2*q2) / ( dx*dy )
                b[m] = (dz1*vb + dz2*vt) / dz
+
             # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
             refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
             vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4

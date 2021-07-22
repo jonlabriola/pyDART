@@ -110,6 +110,7 @@ class create_sequence():
       #--- JDL You May need to make a seeded random number generator
       obnum = 0
       init_time = dt.datetime(1601,1,1,0,0,0)
+      vr_code = self.obs_codes['DOPPLER_RADIAL_VELOCITY']
       for platform  in observation.keys():
          #--- Grab Observation Date, Calculate Epoch Time
          date = observation[platform]['date']
@@ -120,48 +121,74 @@ class create_sequence():
 
          for obtype in observation[platform].keys():
             if obtype in self.obname:
-                observations = observation[platform][obtype]['obs'].flatten() 
-                xloc = observation[platform][obtype]['xloc'].flatten()
-                yloc = observation[platform][obtype]['yloc'].flatten()
-                zloc = observation[platform][obtype]['zloc'].flatten()
-                obcode = observation[platform][obtype]['obstype'].flatten()
-                error = observation[platform][obtype]['error'].flatten()
-                missing = observation[platform][obtype]['missing_flag'] #---  Value for missing flag
- 
-                for oindex,ob in enumerate(observations):
-                   if np.isnan(ob): 
-                      ob = 0
-                      obx= 0
-                      oby = 0
-                      obz = 0
-                      flag = missing
-                   else:
-                      obx = xloc[oindex]
-                      oby = yloc[oindex]
-                      obz = zloc[oindex]  
-                      flag = 0.0
+                #--- Gathering Information For Each Observation
+                missing = observation[platform][obtype]['missing_flag']
+                obs = observation[platform][obtype]['obs'] 
+                obs[obs==np.nan] = missing
 
+
+                tmp  = observation[platform][obtype] 
+                missing = tmp['missing_flag']
+                obcode = tmp['obstype'] 
+                #--- Flatten 3D Arrays 
+                obs    = tmp['obs'].flatten()
+                flag   = np.where(np.isnan(obs),missing,0.)
+                xloc   = tmp['xloc'].flatten()
+                yloc   = tmp['yloc'].flatten()
+                zloc   = tmp['zloc'].flatten()
+                error  = tmp['error'].flatten()
+                flag   = np.where(np.isnan(obs),missing,0.)
+             
+                #--- Remove NaN's
+                indices = np.where(np.isnan(obs))
+                flag   = np.where(np.isnan(obs),missing,0.)
+                obs[indices]  = missing
+                xloc[indices] = missing
+                yloc[indices] = missing
+                zloc[indices] = missing               
+
+                if obcode == self.obs_codes['DOPPLER_RADIAL_VELOCITY']:
+                   nyquist =  observation[platform]['nyquist']
+                   azimuth = tmp['azimuth'].flatten()
+                   elevation = tmp['elevation'].flatten()
+                   azimuth[indices] = missing
+                   elevation[indices] = missing
+
+                for oindex,ob in enumerate(obs):
+
+                   #--- Writing Out for Each Observations
                    self.txtfile.write(" OBS            %d\n"%obnum)
-                   self.txtfile.write(" %d\n"%ob) #--- JDK One of these includes errors find out which one, and how to treat
-                   self.txtfile.write(" %d\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
+                   self.txtfile.write(" %20.14f\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat
+                   self.txtfile.write(" %20.14f\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
                    self.txtfile.write(" %d\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
-                   self.txtfile.write(" %d\n"%flag) #--- Quality Control Flag     
+                   self.txtfile.write(" %d\n"%flag[oindex])               #--- Quality Control Flag     
                    #--- ADDING THREE LOCATION MARKER
-                   if obnum == 0:
+                   if obnum == 0:                 #--- First Observation
                       self.txtfile.write("      %d          %d          %d\n"%(-1,2,-1)) 
-                   elif obnum == (self.nob - 1): 
+                   elif obnum == (self.nob - 1):  #--- Final Observation
                       self.txtfile.write("      %d          %d          %d\n"%(obnum,-1,-1))
-                   else:
+                   else:                          #--- Every Other Observation
                       self.txtfile.write("      %d          %d          %d\n"%(obnum,obnum+1,-1))
                    self.txtfile.write("obdef\n")
                    self.txtfile.write("loc3d\n")
-                   self.txtfile.write("     %d        %d         %d      3\n"%(obx,oby,obz))
+                   self.txtfile.write("    %20.14f          %20.14f        %20.14f    3\n"%(xloc[oindex],yloc[oindex],zloc[oindex])) #--- Obs Location
                    self.txtfile.write("kind\n")
-                   self.txtfile.write("          %d\n"%int(obcode[oindex])) 
+                   self.txtfile.write("          %d\n"%int(obcode))                  #--- Obs Code
+
+                   #--- Add Special input for Radial Velocity Observations
+                   if obcode == self.obs_codes['DOPPLER_RADIAL_VELOCITY']: 
+                      #--- Grabbed From DART Code
+                      #beam_direction(1) = sin(az) * cos(el)
+                      #beam_direction(2) = cos(az) * cos(el)
+                      #beam_direction(3) = sin(el)
+                      beam_dir1 = np.sin(azimuth[oindex]) * np.cos(elevation[oindex])
+                      beam_dir2 = np.cos(azimuth[oindex]) * np.cos(elevation[oindex])
+                      beam_dir3 = np.sin(elevation[oindex])
+                      self.txtfile.write("    %20.14f          %20.14f        %20.14f\n" % (beam_dir1, beam_dir2, beam_dir3) ) 
+                      self.txtfile.write("    %20.14f     \n" %nyquist)
 
 
-
-                   self.txtfile.write("    %d          %d     \n" % (seconds, days))
+                   self.txtfile.write("    %d          %d     \n" % (seconds, days))         #--- Obs Date
 
 
                    obnum += 1    

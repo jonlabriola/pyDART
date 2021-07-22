@@ -163,10 +163,6 @@ def interp_wghts(x, xc, extrapolate=False):
 
   indices = np.where(xc <= x)
 
-  #print('indicies = ',indices)
-  #print('x =',x)
-  #print('xc = ',xc)
-
   if np.size(indices[0]) == 0:
     return -1, -1, None, None, None
   else:
@@ -203,16 +199,15 @@ def unstagger_grid(var,axis):
 #==============================================================================
 
 def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
-#def rad_obs_loc(radobs,min_range=3000.,max_range=150000.):
    """
    Define the location of different radar locations for a radar volume
   
    reads in the radobs class, which contains:
      model:  Model Information including xx,yy [ny,nx] (m)
-     xloc: The x-location of the radar  float   (m)
-     yloc: The y-location of the radar  float   (m)
-     zloc: The height of the radar      float   (m)
-     tilts:   The radar tilts          [ntilt]   (radians)
+     xloc: The x-location of the radar   float   (m)
+     yloc: The y-location of the radar   float   (m)
+     zloc: The height of the radar       float   (m)
+     tilts:   The radar tilts            [ntilt]   (radians)
 
    optional:
       min_range: Minimum Distance of radar observations
@@ -222,9 +217,8 @@ def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
       obx:  The x-location of the radar observation   [ntilt,ny,nx] (m)
       oby:  The y-location of the radar observation   [ntilt,ny,nx] (m)
       obz:  The height of the radar observation       [ntilt,ny,nx] (m)
-      radtilt: The radar tilt angle                      [ntilt,ny,nx] (radians)
+      radtilt: The radar tilt angle                   [ntilt,ny,nx] (radians)
       az:   Observation azimuth angle                 [ntilt,ny,nx] (radians)
-   
    """
    import numpy as np
    #--- Earth Information
@@ -246,7 +240,7 @@ def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
    azimuth = np.arctan((xh-xloc)/(yh-yloc))
    azimuth = np.where((yh-yloc)<0,azimuth+np.pi,azimuth)
    azimuth = azimuth * (180./np.pi)
-   azimuth = np.where(azimuth < 0, 360 + azimuth,azimuth)
+   azimuth = np.where(azimuth < 0, 360. + azimuth,azimuth)
    azimuth = np.radians(azimuth)
 
    #--- Calculating Beam Height Based Upon Radar Tilt
@@ -266,50 +260,40 @@ def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
       #--- Loop over the different radii to obtain approximate beam height
       for hindex in range(0,circle_rad.shape[0]-1):
          obz[ntilt] = np.where((rad_dis >= circle_rad[hindex]) & (rad_dis < circle_rad[hindex+1]),beam_hgt[hindex],obz[ntilt])
+      #--- Set all location values outside of radar beam to missing
       obz[ntilt]    = np.where((obz[ntilt] > max_hgt) | (obz[ntilt] < min_hgt),np.nan,obz[ntilt])
       az[ntilt]     = np.where(np.isnan(obz[ntilt]),np.nan,azimuth)
       obx[ntilt]    = np.where(np.isnan(obz[ntilt]),np.nan,xh)
       oby[ntilt]    = np.where(np.isnan(obz[ntilt]),np.nan,yh)
       rtilt[ntilt]  = np.where(np.isnan(obz[ntilt]),np.nan,tilt)
 
-
    return obx,oby,obz,rtilt,az
 
 #=====================================================================================================
-def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
+def cressman(x, y, obs, x0, y0, roi):
    """ 
    Returns a data value for the point
    Arguments: x, y, obs    : [nz,ny, nx]
               x0, y0       : [nz,ny_coarse,nx_coarse]
               roi          : radius of influence
-              missing:  value to assign if no data, default = 0.0
+              missing:  value to assign if no data
 
    This routine can also be implemented in FORTRAN much quicker...
    """
    # Create distance array
    [nz,ny,nx] = x0.shape
-
-   #nobs = np.size(y0)
    new_ob = np.zeros((nz,ny,nx))
    new_ob[:,:,:] = np.nan
-   print('new_obs shape = ', new_ob.shape)
    R2    = roi**2.0
-   print(np.amax(x0))
    for k in range(0,nz):
-      print('Performing cressman on the %03d level'%k)
       for j in range(0,ny):
          for i in range(0,nx):
-            
             if np.isnan(x0[k,j,i]): continue #--- Skip NaN's
-           
 
-            if np.isnan(x0[k,j,i]):
-               print(x0[k,j,i]) 
             dis = np.sqrt( (x[k]-x0[k,j,i])**2 + (y[k]-y0[k,j,i])**2 )
             indices = np.where(dis<= roi)
             size = np.size(indices)
             if size != 0:
-               #print('indices = ',indices)
                w_sum = 0.0
                top   = 0.0
                rk2 = dis[indices]**2.
@@ -317,33 +301,29 @@ def cressman(x, y, obs, x0, y0, roi, missing=-999999999.):
                w_sum = np.sum(wk)
                top = np.sum(wk*obs[k][indices])
                if w_sum<0.01:
-                  new_ob[k,j,i] = missing
+                  new_ob[k,j,i] = np.nan
                else:
                   new_ob[k,j,i] = top/w_sum
-
-            else:
-               new_ob[k,j,i] = np.nan
    return new_ob
 
 #===============================================================================
 
 
 #=====================================================================================================
-def cressman_orig(x, y, obs, x0, y0, roi, missing=-999999999.):
+def cressman_orig(x, y, obs, x0, y0, roi):
    """
    Returns a data value for the point
    Arguments: x, y    : [nz,ny, nx]
               obs:      [nz,ny,nx]
               x0, y0:   [nz,ny_coarse,nx_coarse]
               roi:      radius of influence
-              missing:  value to assign if no data, default = 0.0
 
    This routine can also be implemented in FORTRAN much quicker...
    """
    # Create distance array
 
    nobs = np.size(y0)
-   new_ob = np.zeros((nobs))
+   new_ob = np.nan * np.zeros((nobs))
    R2    = roi**2.0
    for ob in  range(0,nobs):
      if np.isnan(x0[ob]): continue
@@ -360,12 +340,8 @@ def cressman_orig(x, y, obs, x0, y0, roi, missing=-999999999.):
        wk = (R2-rk2)/(R2+rk2)
        w_sum = np.sum(wk)
        top = np.sum(wk*obs[indices])
-       if w_sum < 0.01:
-          new_ob[ob] = missing
-       else:
+       if w_sum > 0.01:
           new_ob[ob] = top/w_sum
-     else:  #if there are no values assign the data point a NaN
-       new_ob[ob] = np.nan
    return new_ob
 
 #===============================================================================
