@@ -158,10 +158,10 @@ class create_sequence():
 
                    #--- Writing Out for Each Observations
                    self.txtfile.write(" OBS            %d\n"%obnum)
-                   self.txtfile.write(" %20.14f\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat
-                   self.txtfile.write(" %20.14f\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
-                   self.txtfile.write(" %d\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
-                   self.txtfile.write(" %d\n"%flag[oindex])               #--- Quality Control Flag     
+                   self.txtfile.write(" %20.14E\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat
+                   self.txtfile.write(" %20.14E\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
+                   self.txtfile.write(" %20.14E\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
+                   self.txtfile.write(" %20.14E\n"%flag[oindex])               #--- Quality Control Flag     
                    #--- ADDING THREE LOCATION MARKER
                    if obnum == 0:                 #--- First Observation
                       self.txtfile.write("      %d          %d          %d\n"%(-1,2,-1)) 

@@ -17,25 +17,25 @@ def read_cm1(path,time_str=None):
    model = {}
    #--- Read In
    #xmin  =150 #xmax = 200 #ymin = 150 #ymax = 200
-   xmin = 0
-   xmax = 300
-   ymin = 0
-   ymax = 300
+   #xmin = 0
+   #xmax = 300
+   #ymin = 0
+   #ymax = 300
    dumpfile = Dataset(path,"r",fortmat='NETCDF4')
    for var in varnames.keys():
       if var in ['xh','yh','zh']: #--- 1-D variables
          var_tmp = np.squeeze(dumpfile.variables[var][:])
-         if var in ['xh']: var_tmp = var_tmp[xmin:xmax]
-         elif var in ['yh']: var_tmp = var_tmp[ymin:ymax]
+         if var in ['xh']: var_tmp = var_tmp[:]
+         elif var in ['yh']: var_tmp = var_tmp[:]
       elif var in ['ua','va','wa']: #--- Unstagger the grid for certain vars
          if var in ['ua']: unstag_ax = 2 #--- x-axis
          if var in ['va']: unstag_ax = 1 #--- y-axis
          if var in ['wa']: unstag_ax = 0 #--- z-axis
          var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
-         var_tmp = var_tmp[:,ymin:ymax,xmin:xmax]
+         var_tmp = var_tmp[:,:,:]
       else: #--- No Staggered Grids
          var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
-         var_tmp = var_tmp[:,ymin:ymax,xmin:xmax]
+         var_tmp = var_tmp[:,:,:]
       model[varnames[var]] = var_tmp
 
    #--- Other Grid Parameters

@@ -270,6 +270,7 @@ def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
    return obx,oby,obz,rtilt,az
 
 #=====================================================================================================
+
 def cressman(x, y, obs, x0, y0, roi):
    """ 
    Returns a data value for the point
@@ -308,44 +309,6 @@ def cressman(x, y, obs, x0, y0, roi):
 
 #===============================================================================
 
-
-#=====================================================================================================
-def cressman_orig(x, y, obs, x0, y0, roi):
-   """
-   Returns a data value for the point
-   Arguments: x, y    : [nz,ny, nx]
-              obs:      [nz,ny,nx]
-              x0, y0:   [nz,ny_coarse,nx_coarse]
-              roi:      radius of influence
-
-   This routine can also be implemented in FORTRAN much quicker...
-   """
-   # Create distance array
-
-   nobs = np.size(y0)
-   new_ob = np.nan * np.zeros((nobs))
-   R2    = roi**2.0
-   for ob in  range(0,nobs):
-     if np.isnan(x0[ob]): continue
-     dis = np.sqrt( (x-x0[ob])**2 + (y-y0[ob])**2 )
-     # Cut the size o n by choosing a smart threshold (2 km)
-     indices = np.where(dis <= roi)
-     # Check to see if there are any data ponts that are within search radius
-     size = np.size(indices)
-     # go thru values w/in radius: calculate weight, mult by value and sum also sum weights
-     if size != 0:
-       w_sum = 0.0
-       top   = 0.0
-       rk2 = dis[indices]**2.
-       wk = (R2-rk2)/(R2+rk2)
-       w_sum = np.sum(wk)
-       top = np.sum(wk*obs[indices])
-       if w_sum > 0.01:
-          new_ob[ob] = top/w_sum
-   return new_ob
-
-#===============================================================================
-
 def point_interp(fcst,varname,xloc,yloc,zloc):
     """
     Interpolate all 3D variables to a single point in a three-dimensional array
@@ -355,7 +318,7 @@ def point_interp(fcst,varname,xloc,yloc,zloc):
     """
     #--- Look at three-dimensional variables
     point_ob = {}
- 
+
     #--- Selecting the Data Points to Interp Between
     i1, i2, dx1, dx2, dx = interp_wghts(xloc, fcst['xh'])
     j1, j2, dy1, dy2, dy = interp_wghts(yloc, fcst['yh'])

@@ -145,10 +145,12 @@ class obs_plat(object):
       self.ob = np.zeros((len(self.obz)))
 
       #--- Loop Through observation locations
+
+
+
       for zindex,zloc in enumerate(self.obz):
          xloc = self.obx[zindex]
          yloc = self.oby[zindex]
-   
          if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
 
@@ -156,18 +158,19 @@ class obs_plat(object):
             self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
 
          elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M']:
-            p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
-            self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
+            self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
+            self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
+            #p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            #pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+            #self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
             #print('JDL Come Back to Make sure you dont have to keep Temperature in Kelvin')
 
          elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            #print('JDL Come Back to Make Sure the Assimilated units of pressure is correct')
 
          elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M']: #--- JDL Does CM1 use qv or specific humidity?
-            self.ob[zindex] = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
-            #print('JDL Come Back to Make sure you dont have to convert to specific humidity') 
+            self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
+            self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
 
          else:
             print('Observation Unknown: %s'%varname)
