@@ -89,7 +89,7 @@ class create_sequence():
          self.txtfile.write("          %s %s\n"%(self.obcode[index],self.obname[index]))
 
       #--- Bottom half 
-      self.txtfile.write("  num_copies:            %d  num_qc:            %d\n"%(2,1))  #--- Don't know exactly the purpose of this line
+      self.txtfile.write("  num_copies:            %d  num_qc:            %d\n"%(2,2))  #--- May need to change num_qc if number of flags changese
       self.txtfile.write("  num_obs:            %d  max_num_obs:            %d\n"%(self.nob,self.nob))
       self.txtfile.write("observations\n")
       self.txtfile.write("truth\n")
@@ -157,21 +157,23 @@ class create_sequence():
                 for oindex,ob in enumerate(obs):
 
                    #--- Writing Out for Each Observations
-                   self.txtfile.write(" OBS            %d\n"%obnum)
+                   self.txtfile.write(" OBS            %d\n"%(obnum+1))
                    self.txtfile.write(" %20.14E\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat
                    self.txtfile.write(" %20.14E\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
                    self.txtfile.write(" %20.14E\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
                    self.txtfile.write(" %20.14E\n"%flag[oindex])               #--- Quality Control Flag     
                    #--- ADDING THREE LOCATION MARKER
-                   if obnum == 0:                 #--- First Observation
+                   if self.nob == 1:
+                      self.txtfile.write("      %d          %d          %d\n"%(-1,-1,-1))
+                   elif obnum == 0:                 #--- First Observation
                       self.txtfile.write("      %d          %d          %d\n"%(-1,2,-1)) 
                    elif obnum == (self.nob - 1):  #--- Final Observation
                       self.txtfile.write("      %d          %d          %d\n"%(obnum,-1,-1))
                    else:                          #--- Every Other Observation
                       self.txtfile.write("      %d          %d          %d\n"%(obnum,obnum+1,-1))
                    self.txtfile.write("obdef\n")
-                   self.txtfile.write("loc3d\n")
-                   self.txtfile.write("    %20.14f          %20.14f        %20.14f    3\n"%(xloc[oindex],yloc[oindex],zloc[oindex])) #--- Obs Location
+                   self.txtfile.write("loc3Dxyz\n")
+                   self.txtfile.write("    %20.14f          %20.14f        %20.14f    \n"%(xloc[oindex],yloc[oindex],zloc[oindex])) #--- Obs Location
                    self.txtfile.write("kind\n")
                    self.txtfile.write("          %d\n"%int(obcode))                  #--- Obs Code
 
@@ -189,7 +191,7 @@ class create_sequence():
 
 
                    self.txtfile.write("    %d          %d     \n" % (seconds, days))         #--- Obs Date
-
+                   self.txtfile.write("    %20.14f    \n" % (error))         #--- Obs Error
 
                    obnum += 1    
 
