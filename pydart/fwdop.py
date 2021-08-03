@@ -84,6 +84,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
   b = np.zeros([5])
 
   for k in range(0,ntilt):
+    print('Tilt %d'%k)
     for j in range(0,ny):
       for i in range(0,nx):
          #--- Skip all gridpoints with nan's
@@ -148,12 +149,102 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
               Hx_vr[k,j,i] = b[0]*math.sin(azimuth[k,j,i])*math.cos(elv[k,j,i]) + b[1]*math.cos(azimuth[k,j,i])*math.cos(elv[k,j,i]) + (b[2]-vfall)*math.sin(elv[k,j,i])
             else:
                Hx_vr[k,j,i] = np.nan  #--- Don't consider Vr in regions of low Z
-
-# END OBS_OP
   if dbzOnly:
      return Hx_Z
   else:
-     return Hx_vr,Hx_Z  #,yloc,xloc
+     return Hx_vr,Hx_Z 
+
+
+
+
+def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
+           clear_dbz=0.0,cartesian=True,dbzOnly=False):
+  """
+
+  The goal of this code is to vertically interpolate each field, calculate Vr/Z
+  This code was adapted to run more efficiently by eliminating many of the 
+  for loops
+
+  The Radar Forward Operator Used to Calculate Z and Radial Wind
+  Required Arguments
+      1.) fcst    - The  model state variables                [nvars] [nk,ny,nz] - object contains vars and grid info
+      3.) yloc    - Observation Y-Location (m or Latitude)    [ntilt,ny,nx] (m, degrees lat)
+      4.) xloc    - Observation X-Location (m or Longitude)   [ntilt,ny,nx] (m, degrees lon)  
+      5.) zloc    - Observation Height above Surface (m)      [ntilt,ny,nx] (m)
+      6.) elv     - Radar elevation angle                     [ntilt,ny,nx] (radians)
+      7.) azimuth - radar azimuth angle                       [ntilt,ny,nx] (radians)
+
+  Optional Arguments:
+
+     clear_dbz     - What is defined as clear air (remove
+                     vr obs accordingly
+     cartesian    -  Are we working with a cartesian grid    [bool]
+     dbzOnly      -  Only calculate reflectivity, no Vr      [bool]
+
+  """
+  [ntilt,ny,nx] = yloc.shape
+
+  if dbzOnly:
+     Hx_Z  = np.nan * np.ones((ntilt,ny,nx))
+
+  else:
+     Hx_vr = np.nan * np.ones((ntilt,ny,nx))
+     Hx_Z  = np.nan * np.ones((ntilt,ny,nx))
+
+
+  nz_mod = fcst['zh'].shape[0]
+  mhgts = np.transpose(np.tile(fcst['zh'],(nx,nx,1)))
+
+  for k in range(0,ntilt):
+     #--- Calculate observation heights against model heights
+     #--- Keep first model height above the observation or at observation
+     hdiff = mhgts - zloc[k]
+     hdiff[hdiff<0] = 9999
+     hdiff = np.where(hdiff == np.amin(hdiff,axis=0),0,9999) #--- Keep the smallest height diff. above ob
+ 
+     #--- Find the corresponding vertical grid point 
+     grid_points = np.transpose(np.tile(np.arange(0,nz_mod),(nx,ny,1)))
+     vertpts = np.amax(np.where(hdiff == 0, grid_points,0),axis=0)
+
+     #--- Grab vertical location information on model grid
+     verthi  = np.amax(np.where(grid_points[:] == vertpts  ,mhgts,0),axis=0)
+     vertlow = np.amax(np.where(grid_points[:] == vertpts-1,mhgts,0),axis=0)
+     dztot   = verthi - vertlow 
+     dzhi    = verthi - zloc[k] 
+
+     if dbzOnly:  # DBZ
+        #--- Linear Interpolation
+        varhi   =  np.amax(np.where(grid_points[:] == vertpts,  fcst['dbz'],0),axis=0)
+        varlow  =  np.amax(np.where(grid_points[:] == vertpts-1, fcst['dbz'],0),axis=0)
+        var_interp = np.where(vertpts == 0,varhi,((1-(dzhi/dztot))*varhi) + (((dzhi)/dztot)*varlow))
+        var_interp[np.isnan(zloc[k])] = np.nan
+  
+        Hx_Z[k] = np.where(np.isnan(zloc[k]),np.nan,np.clip(var_interp,_dbz_min,_dbz_max))
+
+     else: #DBZ, VR
+        variables = ["u", "v", "w", "dbz", "rho"]
+        b = np.zeros((len(variables),ny,nx))
+        for m, key in enumerate(variables):
+           varhi   =  np.amax(np.where(grid_points[:] == vertpts,  fcst[key],0),axis=0)
+           varlow  =  np.amax(np.where(grid_points[:] == vertpts-1,fcst[key],0),axis=0)
+           b[m] = np.where(vertpts == 0,varhi,((1-(dzhi/dztot))*varhi) + (((dzhi)/dztot)*varlow))
+
+
+        # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
+        refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
+        vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
+        Hx_Z[k] =  np.where(np.isnan(zloc[k]),np.nan,np.clip(b[3],_dbz_min,_dbz_max))
+        Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz, 
+                         b[0]*np.sin(azimuth[k])*np.cos(elv[k]) + b[1]*np.cos(azimuth[k])*np.cos(elv[k]) + (b[2]-vfall)*np.sin(elv[k]),
+                         np.nan)
+
+  if dbzOnly:
+     return Hx_Z
+  else:
+     return Hx_vr,Hx_Z
+
+
+
 
 def theta_to_temp(pt,p):
    """
