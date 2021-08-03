@@ -290,9 +290,8 @@ def cressman(x, y, obs, x0, y0, roi):
       for j in range(0,ny):
          for i in range(0,nx):
             if np.isnan(x0[k,j,i]): continue #--- Skip NaN's
-
             dis = np.sqrt( (x[k]-x0[k,j,i])**2 + (y[k]-y0[k,j,i])**2 )
-            indices = np.where(dis<= roi)
+            indices = np.where((dis<= roi) & (np.isnan(obs[k]) == False))
             size = np.size(indices)
             if size != 0:
                w_sum = 0.0
