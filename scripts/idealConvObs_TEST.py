@@ -17,22 +17,21 @@ import pickle
 #  within a netCDF file for later analysis
 
 #--- These Values Only once an Experiment and can therfore be changed manually to avoid mistakes
-sim_snd = False   # Simulate soundings
+sim_snd = True   # Simulate soundings
 sim_sfc = False   # Simulate surface obs
-sim_pro = True    # Simulate profilers
+sim_pro = False   # Simulate profilers
 output_path = '../output/' #--- Save conventional observations here 
 missing_value = -9999.0
 if sim_snd:
    #--- Block 1: Sounding
-   xsnd = [105000]#,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
-   ysnd = [105000]#,250000,75000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
-   zsnd  = [0.0] #,0.0,0.0]          #--- The height of the radar station of sea level (JDL Working on This)
-   snd_obs  = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
-               'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']    #--- Evaluated Sounding Observations
-   snd_err = [2.0,2.0,4.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
+   xsnd = [75000]     #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1] ! ORIG 195000
+   ysnd = [75000]     #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1] ! ORIG 195000
+   zsnd  = [0.0]       #--- The height of the radar station of sea level (JDL Working on This)
+   snd_obs   = ['RADIOSONDE_V_WIND_COMPONENT']
+   snd_err = [2.0]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
    #--- Vertical Ob Spacing
-   zmax = 15000.  #--- Max observation height is 15000 m
+   zmax = 1000.  #--- Max observation height is 15000 m
    zincr = 500.   #--- Observation collected every 500 m
 
 if sim_sfc:
@@ -44,6 +43,8 @@ if sim_sfc:
                'SURFACE_PRESSURE','SPECIFIC_HUMIDITY_2M']    #--- Evaluated Sounding Observations
    sfc_err = [2.0,2.0,4.0,1.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
+   zmax  = 3000.    #--- Maximum profiler height
+   zincr = 250.     #--- Observation increment
 
 if sim_pro:
    #--- Block 3: Profiler
@@ -53,10 +54,7 @@ if sim_pro:
    #pro_obs  = ['u','v','p','T','qv']    #--- Evaluated Sounding Observations
    pro_obs  = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
                'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']
-   pro_err = [2.0,2.0,4.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
-
-   zmax  = 3000.    #--- Maximum profiler height
-   zincr = 250.     #--- Observation increment
+   pro_err = [2.0,2.0,4.0,1.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
 #--- Argparse provides file name
 parser = argparse.ArgumentParser()
@@ -82,7 +80,7 @@ if sim_snd:
       #--- Loop over the sounding profiles for each observation
       for oindex,obvar in enumerate(snd_obs):
          #--- Define observation locations
-         hgts = np.arange(zsnd[ob],zmax+zincr,zincr)
+         hgts = np.arange(zsnd[ob],zmax,zincr)
          hgts = hgts[np.where(hgts > min_hgt)] #--- Throw out all heights less than min model height 
          y_locations = np.ones(hgts.shape)*ysnd[ob]
          x_locations = np.ones(hgts.shape)*xsnd[ob]
@@ -105,7 +103,7 @@ if sim_pro:
       for oindex,obvar in enumerate(pro_obs):
 
          #--- Define observation locations
-         hgts = np.arange(convob.zloc,zmax+zincr,zincr)
+         hgts = np.arange(convob.zloc,zmax,zincr)
          hgts = hgts[np.where(hgts > min_hgt)] #--- Throw out all heights less than min model height
          y_locations = np.ones(hgts.shape)*ypro[ob]
          x_locations = np.ones(hgts.shape)*xpro[ob]
