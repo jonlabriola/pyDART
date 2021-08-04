@@ -32,7 +32,7 @@ class obs_plat(object):
       self.obx = None
       self.oby = None
       self.obz = None
-      self.missing = -99999999.
+      self.missing = 99999999.
 
       #--- Adding Radar Specific Constants
       if obtype =='radar':
@@ -184,10 +184,10 @@ class obs_plat(object):
          dbz_only: A string of the observation to generatee
       """
       if dbz_only:
-         self.obdbz = pydart.fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
+         self.obdbz = pydart.fwdop.calcHx_fast(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
                                           self.clearair,dbzOnly=True)
       else:
-         self.obvr,self.obdbz = pydart.fwdop.calcHx(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
+         self.obvr,self.obdbz = pydart.fwdop.calcHx_fast(self.model,self.obx,self.oby,self.obz,self.elv,self.az,
                                                     self.clearair) 
 
 
