@@ -157,6 +157,7 @@ class create_sequence():
                 if obcode == 42: obcode = 46 #--- Switch REFL Code
 
                 #--- Flatten 3D Arrays 
+                print('JDL radar array =',tmp['obs'].shape)
                 obs    = tmp['obs'].flatten()
                 flag   = np.where(np.isnan(obs),missing,0.)
                 xloc   = tmp['xloc'].flatten()
@@ -241,9 +242,16 @@ class read_sequence():
    """
    This class is used to read in observation sequence files 
    """
-   def __init__(self,filepath):
+   def __init__(self,filepath,ntilt=None,ny=None,nx=None):
       self.read_header(filepath)
-      self.read_radObs(filepath)
+      obs = {}
+      obs = self.read_rad_obs(filepath,obs)
+      if ntilt is None or ny is None or nx is None:
+         pass
+      else:
+         obs = self.reshape_rad_obs(obs,ntilt,ny,nx)
+      obs = self.read_conv_obs(filepath,obs)
+
 
    def read_header(self,filepath):
       """
@@ -255,7 +263,7 @@ class read_sequence():
       self.obcode = []
       self.obname = []
 
-      self.copy = []
+      self.copy_name = []
       self.qc = []
 
       self.obindex =[]
@@ -267,7 +275,6 @@ class read_sequence():
       qc_start   = 999.
       qc_stop    = 999.
 
-     
       for lindex, line in enumerate(lines):
          if lindex == 2: 
             #--- Number of Observation Types
@@ -297,47 +304,57 @@ class read_sequence():
             self.nob = int(ln[1])  
 
          elif lindex > copy_start and lindex <= copy_stop:
-            #--- Read in all the observation copies
-            self.copy.append(line)            
+            #--- Read in all the observation copy types (e.g., mem0X_bckd, mem0X_analy)
+            self.copy_name.append(line)            
 
          elif lindex > qc_start and lindex <= qc_stop:
             #--- Read in the QC flags
             self.qc.append(line)
          
          elif lindex > qc_stop:
-            #--- Break Statement to save time
+            #---Read in observation indiced
             if 'OBS' in line:
                self.obindex.append(lindex)
-            #self.obstart = lindex+1
-            #break
 
-
-
-   def read_radObs(self,filepath):
+   def read_rad_obs(self,filepath,obs=None):
       """
-      How to read observation types
-      
-      Should I read by observation type?
+      A function used to read radar observations from obs_seq file
+
+      Required Arguments:
+         filepath (string) - The path to the obs_sequence file
+
+      Optional Arguments:
+         obs - A dictionary that will have radar observations inserted in it
+               If no dictionary is given than the function will create one 
+
       """
+
+      #--- Read in the sequence file
+      #--- Define the important indices for each observation
       lines = open(filepath)
-      test = lines.readlines()
-      plat_index   = len(self.copy) + 1    #--- Observation Platform
-      flag_index   = len(self.copy) + 2    #--- JDL Flag   
-      dartqc_index = len(self.copy) + 3    #--- DART QC Flag
-      loc_index    = len(self.qc) + len(self.copy) + 4 #--- Location of the Observation locations
-      kindex       = len(self.qc) + len(self.copy) + 6 #--- Observation Kind
+      rad_obs = lines.readlines()
+      plat_index   = len(self.copy_name) + 1    #--- Observation Platform
+      flag_index   = len(self.copy_name) + 2    #--- JDL Flag   
+      dartqc_index = len(self.copy_name) + 3    #--- DART QC Flag
+      loc_index    = len(self.qc) + len(self.copy_name) + 4 #--- Location of the Observation locations
+      kindex       = len(self.qc) + len(self.copy_name) + 6 #--- Observation Kind
 
 
-      nobs = 1
+      nobs = 0
       nplat = 1
       nobs_radar = []
       dbz_ob_index = []
       vr_ob_index = []
 
-      #---Step 1 Get The Number of Observations For Each Radar
+      #--- Step 1: Get The Number of Observations For Each Radar
+      #--- Save the location where the dbz/vr observations can
+      #--- be found
+   
+      #--- nobs_radar = The number of either dbz / vr obs per radar
+      #--- dbz_ob_index/vr_ob_index = Indices where radar obs start
       for index in self.obindex:
-         platform = float(test[plat_index+index].split()[0])
-         if int(test[kindex+index]) == 45:
+         platform = float(rad_obs[index+plat_index].split()[0])
+         if int(rad_obs[kindex+index]) == 45:
             dbz_ob_index.append(index)
             if platform > nplat:
                nobs_radar.append(nobs) 
@@ -346,77 +363,108 @@ class read_sequence():
             else:
                nobs += 1
 
-         elif int(test[kindex+index]) == 46:
+         elif int(rad_obs[kindex+index]) == 46:
             vr_ob_index.append(index)
 
-      #--- Add Final Platform
+      #--- Add Final Radar Platform Info
       nobs_radar.append(nobs)
 
+      if obs is None:
+         obs = {}
+
       #--- Step 2: Create the Radar Dictionary
-      obs = {}
-      print('JDL numplat = ',nobs_radar)
-      for nrdr,nob in enumerate(nobs_radar):
+      #--- First Loop over Each Radar
+      for nrdr,nob_per_rdr in enumerate(nobs_radar):
          plat_name = 'radar_%03d'%(nrdr+1)
          obs[plat_name]={}
-         #print('Number of obs = ',nobs_radar)
+
          #--------------------------#
          #--- Radar Reflectivity ---#
          #--------------------------#
          obs[plat_name]['RADAR_REFLECTIVITY'] = {}
-         obs[plat_name]['RADAR_REFLECTIVITY']['obx']     = np.zeros((nob))
-         obs[plat_name]['RADAR_REFLECTIVITY']['oby']     = np.zeros((nob))
-         obs[plat_name]['RADAR_REFLECTIVITY']['obz']     = np.zeros((nob))
-         obs[plat_name]['RADAR_REFLECTIVITY']['flag']    = np.zeros((nob))  
-         obs[plat_name]['RADAR_REFLECTIVITY']['DART_QC'] = np.zeros((nob))
-         for cindex,copy in enumerate(self.copy):
-            #--- Loop Over the Different Copies
-            obs[plat_name]['RADAR_REFLECTIVITY'][copy] = np.zeros((nob)) 
+         obs[plat_name]['RADAR_REFLECTIVITY']['obx']     = np.zeros((nob_per_rdr))
+         obs[plat_name]['RADAR_REFLECTIVITY']['oby']     = np.zeros((nob_per_rdr))
+         obs[plat_name]['RADAR_REFLECTIVITY']['obz']     = np.zeros((nob_per_rdr))
+         obs[plat_name]['RADAR_REFLECTIVITY']['flag']    = np.zeros((nob_per_rdr))  
+         obs[plat_name]['RADAR_REFLECTIVITY']['DART_QC'] = np.zeros((nob_per_rdr))
+         for cindex,copy in enumerate(self.copy_name):
+            #--- Loop Over the Different Copy Types
+            obs[plat_name]['RADAR_REFLECTIVITY'][copy] = np.zeros((nob_per_rdr)) 
             obcount = 0 
             for oindex in dbz_ob_index:
                #--- Make sure platform number is the same as radar number
-               if float(test[oindex+plat_index]) == nrdr+1: 
-                  ob_loc = test[oindex+loc_index].split()
-                  obs[plat_name]['RADAR_REFLECTIVITY'][copy][obcount]      = float(test[oindex+cindex+1])
+               if float(rad_obs[oindex+plat_index]) == nrdr+1: 
+                  ob_loc = rad_obs[oindex+loc_index].split()
+                  obs[plat_name]['RADAR_REFLECTIVITY'][copy][obcount]      = float(rad_obs[oindex+cindex+1])
                   if cindex == 0:
                      obs[plat_name]['RADAR_REFLECTIVITY']['obx'][obcount]     = float(ob_loc[0])
                      obs[plat_name]['RADAR_REFLECTIVITY']['oby'][obcount]     = float(ob_loc[1])
                      obs[plat_name]['RADAR_REFLECTIVITY']['obz'][obcount]     = float(ob_loc[2]) 
-                     obs[plat_name]['RADAR_REFLECTIVITY']['flag'][obcount]    = float(test[oindex+flag_index])
-                     obs[plat_name]['RADAR_REFLECTIVITY']['DART_QC'][obcount] = float(test[oindex+dartqc_index])
+                     obs[plat_name]['RADAR_REFLECTIVITY']['flag'][obcount]    = float(rad_obs[oindex+flag_index])
+                     #--- DART QC is not created until after DA so make sure the statement is option
+                     try:
+                        obs[plat_name]['RADAR_REFLECTIVITY']['DART_QC'][obcount] = float(rad_obs[oindex+dartqc_index])
+                     except:
+                        obs[plat_name]['RADAR_REFLECTIVITY']['DART_QC'][obcount] = np.nan
                   obcount += 1
 
          #--------------------------#
          #---  Radial Velocity   ---#
          #--------------------------#
          obs[plat_name]['DOPPLER_RADIAL_VELOCITY'] = {}
-         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['obx']     = np.zeros((nob))
-         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['oby']     = np.zeros((nob))
-         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['obz']     = np.zeros((nob))
-         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['flag']    = np.zeros((nob))  
-         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['DART_QC'] = np.zeros((nob))
-         for cindex,copy in enumerate(self.copy):
+         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['obx']     = np.zeros((nob_per_rdr))
+         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['oby']     = np.zeros((nob_per_rdr))
+         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['obz']     = np.zeros((nob_per_rdr))
+         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['flag']    = np.zeros((nob_per_rdr))  
+         obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['DART_QC'] = np.zeros((nob_per_rdr))
+         for cindex,copy in enumerate(self.copy_name):
             #--- Loop Over the Different Copies
-            obs[plat_name]['DOPPLER_RADIAL_VELOCITY'][copy] = np.zeros((nob)) 
+            obs[plat_name]['DOPPLER_RADIAL_VELOCITY'][copy] = np.zeros((nob_per_rdr)) 
             obcount = 0 
             for oindex in vr_ob_index:
                #--- Make sure platform number is the same as radar number
-               if float(test[oindex+plat_index]) == nrdr+1:       
-                  ob_loc = test[oindex+loc_index].split()
-                  obs[plat_name]['DOPPLER_RADIAL_VELOCITY'][copy][obcount]      = float(test[oindex+cindex+1])
+               if float(rad_obs[oindex+plat_index]) == nrdr+1:       
+                  ob_loc = rad_obs[oindex+loc_index].split()
+                  obs[plat_name]['DOPPLER_RADIAL_VELOCITY'][copy][obcount]      = float(rad_obs[oindex+cindex+1])
                   if cindex == 0:
                      obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['obx'][obcount]     = float(ob_loc[0])
                      obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['oby'][obcount]     = float(ob_loc[1])
                      obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['obz'][obcount]     = float(ob_loc[2]) 
-                     obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['flag'][obcount]    = float(test[oindex+flag_index])
-                     obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['DART_QC'][obcount] = float(test[oindex+dartqc_index])
+                     obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['flag'][obcount]    = float(rad_obs[oindex+flag_index])
+                     #--- DART QC is not created until after DA so make sure the statement is option
+                     try:
+                        obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['DART_QC'][obcount] = float(rad_obs[oindex+dartqc_index])
+                     except:
+                        obs[plat_name]['DOPPLER_RADIAL_VELOCITY']['DART_QC'][obcount] = np.nan 
+            
                   obcount += 1
 
-
-      #---- JDL Final Addition - Need to reshape the different dictionary entries to occupy the space of ntilt,ny,nx
-      #---- This could be done in a seperate function
-
       return obs
-               
+
+   def read_conv_obs(self,filepath):
+
+   def reshape_rad_obs(self,obs,ntilt,ny,nx):
+      """
+      A function that is used to reshape all radar observation
+      to fill a three-dimensional volume
+
+      Required Arguments:
+         obs - The dictionary that contains the radar observations.
+               Observations within the dictionary should originally have the shape of [nobs]
+  
+         ntilt (integer) - The number of radar tilts
+         ny    (integer) - The number of grid points in the y direction
+         nx    (interge) - The number of grid points in the x direction
+
+      """ 
+      for platform in obs.keys():
+         if 'radar' in platform:
+            for obtype in  obs[platform].keys():
+               for reshape_key in obs[platform][obtype].keys():
+                  obs[platform][obtype][reshape_key] = np.reshape(obs[platform][obtype][reshape_key],(ntilt,ny,nx),order='F')
+                  print('OBS SHAPE = ', obs[platform][obtype][reshape_key].shape)
+      return obs
+
 #---Step 6 Create NetCDF file
 #fn = 'radar_obs.nc'
 #wrtfile = Dataset(fn, 'w', format='NETCDF4')
