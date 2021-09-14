@@ -37,23 +37,48 @@ if sim_snd:
 
 if sim_sfc:
    #--- Block 2: Surface
-   xsfc = [30000,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
-   ysfc = [30000,250000,75000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
-   zsfc  = [0.0,0.0,0.0]          #--- The height of the radar station of sea level (JDL Working on This)
+   xsfc = [50000, 100000, 150000, 200000,
+           50000, 100000, 150000, 200000,
+           50000, 100000, 150000, 200000,
+           50000, 100000, 150000, 200000]    #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
+
+   ysfc = [ 25000, 25000, 25000, 25000,
+            75000, 75000, 75000, 75000,
+           125000,125000,125000,125000,
+           175000,175000,175000,175000]      #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
+
+   zsfc  = [0.0,0.0,0.0,0.0,
+            0.0,0.0,0.0,0.0,
+            0.0,0.0,0.0,0.0,
+            0.0,0.0,0.0,0.0]                 #--- The height of the radar station of sea level (JDL Working on This)
+
    sfc_obs  = ['TEMPERATURE_2M','U_WIND_10M','V_WIND_10M',
                'SURFACE_PRESSURE','SPECIFIC_HUMIDITY_2M']    #--- Evaluated Sounding Observations
+
    sfc_err = [2.0,2.0,4.0,1.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
 
 if sim_pro:
-   #--- Block 3: Profiler
-   xpro = [30000,250000,75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
-   ypro = [30000,250000,75000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
-   zpro  = [0.0,0.0,0.0]          #--- The height of the radar station of sea level (JDL Working on This)
-   #pro_obs  = ['u','v','p','T','qv']    #--- Evaluated Sounding Observations
+
+   xpro = [50000, 100000, 150000, 200000,
+           50000, 100000, 150000, 200000,
+           50000, 100000, 150000, 200000,
+           50000, 100000, 150000, 200000]    #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
+
+   ypro = [ 25000, 25000, 25000, 25000,
+            75000, 75000, 75000, 75000,
+           125000,125000,125000,125000,
+           175000,175000,175000,175000]      #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
+
+   zpro  = [0.0,0.0,0.0,0.0,
+            0.0,0.0,0.0,0.0,
+            0.0,0.0,0.0,0.0,
+            0.0,0.0,0.0,0.0]                 #--- The height of the radar station of sea level (JDL Working on This)
+   
    pro_obs  = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
                'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']
-   pro_err = [2.0,2.0,4.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
+
+   pro_err = [2.0,2.0,4.0,0.0005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
    zmax  = 3000.    #--- Maximum profiler height
    zincr = 250.     #--- Observation increment

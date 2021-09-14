@@ -13,8 +13,8 @@ from datetime import datetime
 
 case_type = 'idealized' #-- Either Idealized (i.e., create your own observations) or Real (i.e., read observation from file)
 if case_type == 'idealized':     #--- Must Explicitly List All Parameters
-   xloc = [50000, 50000,  150000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
-   yloc = [50000, 150000, 100000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
+   xloc = [75000, 75000,  75000]   #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
+   yloc = [25000, 175000, 100000]   #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
    hgt  = [0.0,0.0,0.0]          #--- The height of the radar station of sea level (JDL Working on This)
    tilts = np.radians(np.array([0.5, 0.9, 1.3, 1.8, 2.4, 3.1, 
            4.0, 5.1, 6.4, 8.0, 10.0, 12.5, 15.6, 19.5])) #--- NEXRAD Tilts
@@ -26,15 +26,16 @@ if case_type == 'idealized':     #--- Must Explicitly List All Parameters
    dbz_error = 6.0               #--- dBZ Error (dBZ)
    save_fine_obs = True          #--- Flag to save fine observations (in addition to coarse obs)
    nrdr = len(xloc)
-   output_path = '../output/' #--- Output Radar Observation Object into a Pickle File
+   output_path = '../output/'    #--- Output Radar Observation Object into a Pickle File
+   max_hgt = 14000               #--- The maximum height of a radar observation
 else:  #--- A Real-Data Case
    print('Work on this at a later time')
 
 
 #--- Superobbing Information
 superobs = True        #--- If True Apply Cressman Filter
-nskip = int(20)              #--- The number of grid points to skip
-roi = 5000.            #--- Cressman Function influence radius
+nskip = int(8)              #--- The number of grid points to skip
+roi = 2000.            #--- Cressman Function influence radius
 
 #--- Thinning Observations (Need To Update if Desired)
 #clear_thin = 6    #--- The number of grid points to skip where Z < clearir_dbz
@@ -62,7 +63,8 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    print('Open radar %d'%rdr)
    #---Step 1: Define the Observation Platform
    platform_name = 'radar_%03d'%(rdr+1)
-   radobs.estab_platform(platform_name,xloc[rdr],yloc[rdr],hgt[rdr],tilts,nyquist)
+   radobs.estab_platform(platform_name,xloc[rdr],yloc[rdr],hgt[rdr],
+                         tilts=tilts,nyquist=nyquist,max_hgt=max_hgt)
    
    print(datetime.now())
    print('Done Establish Platform')
@@ -74,7 +76,7 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    #--- Step 3: Call Forward Operator
    radobs.radar_operator()
 
-   pydart.plotting.rough_plot(radobs.obvr[0],'vr','full_res.png')
+   #pydart.plotting.rough_plot(radobs.obvr[0],'vr','full_res.png')
 
    print(datetime.now())
    print('Done FWD OP')
@@ -101,7 +103,7 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    dbzerr  = np.ones(radobs.obdbz.shape)*dbz_error   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
    radobs.addob(varname, dbzerr, obdbz=True)
 
-   pydart.plotting.rough_plot(radobs.obvr[0],'vr','superob_vr.png')
+   #pydart.plotting.rough_plot(radobs.obvr[0],'vr','superob_vr.png')
 
    varname = 'DOPPLER_RADIAL_VELOCITY'
    vrerr = np.ones(radobs.obvr.shape)*vr_error  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
