@@ -32,6 +32,7 @@ class obs_plat(object):
       self.obx = None
       self.oby = None
       self.obz = None
+      self.max_hgt = None
       self.missing = 99999999.
 
       #--- Adding Radar Specific Constants
@@ -44,7 +45,6 @@ class obs_plat(object):
         self.az = None
         self.elv = None
         self.nyquist = None 
-
    #--- Read Model Output (For Forward Operator)
    def readmod(self,model,path):
       """
@@ -56,7 +56,7 @@ class obs_plat(object):
       else:
          print('Add Capabilities to read other models')
 
-   def estab_platform(self,plat_name,x,y,z,tilts=None,nyquist=None,date=None):
+   def estab_platform(self,plat_name,x,y,z,tilts=None,nyquist=None,date=None,max_hgt=None):
        """
        Define x,y,z observation locations for platform
        Defines platform name (for long-term storage in dictionary)
@@ -72,6 +72,7 @@ class obs_plat(object):
           nyquist  :   The nyquist velocity of the radar
           date     :   An array with defined time information
                        [year,month,day,hour,minute,second]
+          max_hgt  :   The maximum height of an observation
        """
        self.platform = {}
        self.xloc = x
@@ -102,13 +103,18 @@ class obs_plat(object):
          else:                         #--- Establish with None
             self.obs[self.plat_name]['date'][time] = None
 
+       if max_hgt is None:
+          self.max_hgt = 1E50  #--- Some very high observation (arbitrary)
+       else:
+          self.max_hgt = max_hgt
+
    def obloc(self):
       """
       Calculating radar observation locations that will be saved to the object
       Must run estab_platform to define radar location first
       """
       if self.obtype == 'radar':
-         self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts)     
+         self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts,rad_top = self.max_hgt)     
       else:
          print('Other observations types are not accomodated yet')
 
@@ -163,7 +169,6 @@ class obs_plat(object):
             #p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
             #pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
             #self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
-            #print('JDL Come Back to Make sure you dont have to keep Temperature in Kelvin')
 
          elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)

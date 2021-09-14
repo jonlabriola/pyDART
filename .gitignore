@@ -1,0 +1,8 @@
+*.png
+*.pickle
+*.swp
+/__pycache__/
+/build/
+/dist/
+/pydart.egg-info
+/output/

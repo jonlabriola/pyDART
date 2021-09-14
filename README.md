@@ -19,3 +19,7 @@ There are four primary goals supported by this package:
 
 3.) Convert the observation sequence file back and place into observation class for appropriate time 
    -ascii2hdf program used to do this
+
+4.) Create rough plots of the observations
+#Warning - Observation Codes Change with DART Copy
+#Will Need to update DART_obs.csv in pydart/data/

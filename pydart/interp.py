@@ -198,7 +198,7 @@ def unstagger_grid(var,axis):
 
 #==============================================================================
 
-def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
+def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.,rad_top=14000):
    """
    Define the location of different radar locations for a radar volume
   
@@ -212,6 +212,7 @@ def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
    optional:
       min_range: Minimum Distance of radar observations
       max_range: Maximum Distance of radar observations 
+      rad_top:   The highest allowable radar observation
 
    returns:
       obx:  The x-location of the radar observation   [ntilt,ny,nx] (m)
@@ -261,7 +262,7 @@ def rad_obs_loc(model,xloc,yloc,zloc,radtilt,min_range=3000.,max_range=150000.):
       for hindex in range(0,circle_rad.shape[0]-1):
          obz[ntilt] = np.where((rad_dis >= circle_rad[hindex]) & (rad_dis < circle_rad[hindex+1]),beam_hgt[hindex],obz[ntilt])
       #--- Set all location values outside of radar beam to missing
-      obz[ntilt]    = np.where((obz[ntilt] > max_hgt) | (obz[ntilt] < min_hgt),np.nan,obz[ntilt])
+      obz[ntilt]    = np.where((obz[ntilt] > max_hgt) | (obz[ntilt] < min_hgt) | (obz[ntilt] > rad_top),np.nan,obz[ntilt])
       az[ntilt]     = np.where(np.isnan(obz[ntilt]),np.nan,azimuth)
       obx[ntilt]    = np.where(np.isnan(obz[ntilt]),np.nan,xh)
       oby[ntilt]    = np.where(np.isnan(obz[ntilt]),np.nan,yh)
