@@ -141,7 +141,7 @@ class obs_plat(object):
       if 'yloc' in kwargs:
           self.oby = kwargs['yloc']
       else:
-          self.oby = [self.xloc]
+          self.oby = [self.yloc]
 
       if 'zloc' in kwargs:
           self.obz = kwargs['zloc']
@@ -152,30 +152,32 @@ class obs_plat(object):
 
       #--- Loop Through observation locations
 
-
-
       for zindex,zloc in enumerate(self.obz):
          xloc = self.obx[zindex]
          yloc = self.oby[zindex]
+
          if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
+            print('JDL OB-U = ',self.ob[zindex])
 
          elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
 
          elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M']:
-            self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
-            self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
-            #p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            #pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
-            #self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
+            #self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
+            #self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
+            p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+            self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
 
          elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
 
          elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M']: #--- JDL Does CM1 use qv or specific humidity?
-            self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
-            self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
+            #self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
+            #self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
+            qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+            self.ob[zindex] =pydart.fwdop.qv_to_spechum(qv) 
 
          else:
             print('Observation Unknown: %s'%varname)

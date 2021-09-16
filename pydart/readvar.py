@@ -53,9 +53,14 @@ def gen_model_output(path,varnames,time_str,rstfile):
    """
    model = {}
    dumpfile = Dataset(path,"r",fortmat='NETCDF4')
+   if rstfile:
+     scale_factor =  1
+   else:
+     scale_factor = 1000. #--- Forecast file are written in units of km, want to convert to m
+
    for var in varnames.keys():
       if var in ['xh','yh','zh']: #--- 1-D variables
-         var_tmp = np.squeeze(dumpfile.variables[var][:])
+         var_tmp = np.squeeze(dumpfile.variables[var][:])*scale_factor
          if var in ['xh']: var_tmp = var_tmp[:]
          elif var in ['yh']: var_tmp = var_tmp[:]
       elif var in ['ua','va','wa','u','v','w']: #--- Unstagger the grid for certain vars
@@ -70,13 +75,9 @@ def gen_model_output(path,varnames,time_str,rstfile):
       model[varnames[var]] = var_tmp
 
    #--- Other Grid Parameters
-   if rstfile:
-     scale_factore =  1
-   else:
-     scale_factor = 1000. #--- Forecast file are written in units of km, want to convert to m
-   model['dx'] = (model['xh'][1] - model['xh'][0]) * scale_factor
+   model['dx'] = (model['xh'][1] - model['xh'][0])
    model['nx'] = model['xh'].shape[0]
-   model['dy'] = (model['yh'][1]-model['yh'][0]) * scale_factor
+   model['dy'] = (model['yh'][1]-model['yh'][0]) 
    model['ny'] = model['yh'].shape[0]
    model['nz'] = model['zh'].shape[0]
 
