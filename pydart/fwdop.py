@@ -183,7 +183,6 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
 
   """
   [ntilt,ny,nx] = yloc.shape
-
   if dbzOnly:
      Hx_Z  = np.nan * np.ones((ntilt,ny,nx))
 
@@ -199,6 +198,7 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
      #--- Calculate observation heights against model heights
      #--- Keep first model height above the observation or at observation
      hdiff = mhgts - zloc[k]
+    
      hdiff[hdiff<0] = 9999
      hdiff = np.where(hdiff == np.amin(hdiff,axis=0),0,9999) #--- Keep the smallest height diff. above ob
  

@@ -68,6 +68,8 @@ def gen_model_output(path,varnames,time_str,rstfile):
          #--- (helps with verification to get on reg grid)
          if var in ['xh','yh']:
             var_tmp = (var_tmp[0:-1] + var_tmp[1:])/2.
+         if var in ['zh']:
+            if var_tmp.ndim > 1: var_tmp = var_tmp[:,0,0] # Remove Extra Dimensions added by DART
       else:
          if var in ['ua','va','wa','u','v','w']: #--- Unstagger the grid for certain vars
             if var in ['ua','u']: unstag_ax = 2 #--- x-axis
