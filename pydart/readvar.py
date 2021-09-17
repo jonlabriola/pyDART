@@ -63,15 +63,27 @@ def gen_model_output(path,varnames,time_str,rstfile):
          var_tmp = np.squeeze(dumpfile.variables[var][:])*scale_factor
          if var in ['xh']: var_tmp = var_tmp[:]
          elif var in ['yh']: var_tmp = var_tmp[:]
-      elif var in ['ua','va','wa','u','v','w']: #--- Unstagger the grid for certain vars
-         if var in ['ua','u']: unstag_ax = 2 #--- x-axis
-         if var in ['va','v']: unstag_ax = 1 #--- y-axis
-         if var in ['wa','w']: unstag_ax = 0 #--- z-axis
-         var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
-         var_tmp = var_tmp[:,:,:]
-      else: #--- No Staggered Grids
-         var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
-         var_tmp = var_tmp[:,:,:]
+
+         #--- Restagger grids in x/y directions  (JDL NEW)
+         #--- (helps with verification to get on reg grid)
+         if var in ['xh','yh']:
+            var_tmp = (var_tmp[0:-1] + var_tmp[1:])/2.
+      else:
+         if var in ['ua','va','wa','u','v','w']: #--- Unstagger the grid for certain vars
+            if var in ['ua','u']: unstag_ax = 2 #--- x-axis
+            if var in ['va','v']: unstag_ax = 1 #--- y-axis
+            if var in ['wa','w']: unstag_ax = 0 #--- z-axis
+            var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
+            var_tmp = var_tmp[:,:,:]
+         else: #--- No Staggered Grids
+            var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
+            var_tmp = var_tmp[:,:,:]
+
+         #--- Restagger Grid in  x/y directions (JDL NEW)
+         #--- (Helps with Foreast verification)
+         var_tmp = (var_tmp[:,0:-1,:] + var_tmp[:,1:,:])/2. #-- y-dir
+         var_tmp = (var_tmp[:,:,0:-1] + var_tmp[:,:,1:])/2. #-- x-dir
+
       model[varnames[var]] = var_tmp
 
    #--- Other Grid Parameters

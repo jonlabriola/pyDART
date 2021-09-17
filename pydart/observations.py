@@ -213,11 +213,12 @@ class obs_plat(object):
       fine_y = self.oby
 
       #--- Coarsen existing grid
-      self.obx = self.obx[:,::nskip,::nskip]
-      self.oby = self.oby[:,::nskip,::nskip]
-      self.obz = self.obz[:,::nskip,::nskip]
-      self.az  = self.az[:,::nskip,::nskip]
-      self.elv = self.elv[:,::nskip,::nskip]
+      #--- The nskip-1 helps to start at 2 km
+      self.obx = self.obx[:,nskip-1::nskip,nskip-1::nskip]
+      self.oby = self.oby[:,nskip-1::nskip,nskip-1::nskip]
+      self.obz = self.obz[:,nskip-1::nskip,nskip-1::nskip]
+      self.az  =  self.az[:,nskip-1::nskip,nskip-1::nskip]
+      self.elv = self.elv[:,nskip-1::nskip,nskip-1::nskip]
 
       #--- Perform cressman interpolation for each radar tilt
       self.obdbz = pydart.interp.cressman(fine_x,fine_y,fine_dbz,self.obx,self.oby,roi)
