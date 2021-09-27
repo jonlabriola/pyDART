@@ -189,7 +189,7 @@ class create_sequence():
                    self.txtfile.write(" %20.14E\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
                    #--- JDL This is done to avoid assimilating any observations on the edge boundaries (Results in a DART Error)
                    #--- This is currently hard coded for the QLCS Case 
-                   if xloc[oindex] < 1000. or xloc[oindex] > 199000. or yloc[oindex] < 1000. or yloc[oindex] > 199000. or zloc[oindex] < 150. or zloc[oindex] >14000:
+                   if xloc[oindex] < 1000. or xloc[oindex] > 199000. or yloc[oindex] < 1000. or yloc[oindex] > 199000. or zloc[oindex] < 0. or zloc[oindex] >14000:
                       self.txtfile.write(" %20.14E\n"%np.absolute(99999.))
                    #--- JDL This is what you would do other wise
                    else:
