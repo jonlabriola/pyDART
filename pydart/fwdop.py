@@ -143,7 +143,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
 
             # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
             refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
-            vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
+            vfall  =  0 #2.6 * refl**0.107 * (1.2/b[4])**0.4
             Hx_Z[k,j,i] = np.clip(b[3],_dbz_min,_dbz_max)  
             if Hx_Z[k,j,i] >= clear_dbz: # --- Remove Radial Velocity Observations from Regions of Clear Air
               Hx_vr[k,j,i] = b[0]*math.sin(azimuth[k,j,i])*math.cos(elv[k,j,i]) + b[1]*math.cos(azimuth[k,j,i])*math.cos(elv[k,j,i]) + (b[2]-vfall)*math.sin(elv[k,j,i])
@@ -222,20 +222,31 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
         Hx_Z[k] = np.where(np.isnan(zloc[k]),np.nan,np.clip(var_interp,_dbz_min,_dbz_max))
 
      else: #DBZ, VR
-        variables = ["u", "v", "w", "dbz", "rho"]
+        if 'fall' in fcst.keys():
+           #print('Working with Fall Speeds')
+           variables = ["u", "v", "w", "dbz", "rho", "fall"]
+        else: 
+           #print('Calculating Fall Speed Seperately')
+           variables = ["u", "v", "w", "dbz", "rho"]
         b = np.zeros((len(variables),ny,nx))
         for m, key in enumerate(variables):
-           varhi   =  np.amax(np.where(grid_points[:] == vertpts,  fcst[key],0),axis=0)
-           varlow  =  np.amax(np.where(grid_points[:] == vertpts-1,fcst[key],0),axis=0)
+           #print('The min value for %s is %d'%(key,np.amin(fcst[key])))
+           varhi   =  np.nanmax(np.where(grid_points[:] == vertpts,  fcst[key],np.nan),axis=0)
+           varlow  =  np.nanmax(np.where(grid_points[:] == vertpts-1,fcst[key],np.nan),axis=0)
            b[m] = np.where(vertpts == 0,varhi,((1-(dzhi/dztot))*varhi) + (((dzhi)/dztot)*varlow))
-
+           # JDL There are additional interpolation bugs - figure what the problem is.
 
         # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
-        refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
-        vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
+        if 'fall' in fcst.keys():
+           vfall  = b[5]
+        else:
+           refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
+           vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
         Hx_Z[k] =  np.where(np.isnan(zloc[k]),np.nan,np.clip(b[3],_dbz_min,_dbz_max))
-        Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz, 
-                         b[0]*np.sin(azimuth[k])*np.cos(elv[k]) + b[1]*np.cos(azimuth[k])*np.cos(elv[k]) + (b[2]-vfall)*np.sin(elv[k]),
+        Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz,b[0],np.nan) 
+        #print('The min U is = ',np.nanmin(Hx_vr[k]))
+        Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz,
+                         (b[0]*np.sin(azimuth[k])*np.cos(elv[k])) + (b[1]*np.cos(azimuth[k])*np.cos(elv[k])) + ((b[2]-vfall)*np.sin(elv[k])),
                          np.nan)
 
   if dbzOnly:
