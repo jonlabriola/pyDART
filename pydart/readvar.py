@@ -63,9 +63,8 @@ def gen_model_output(path,varnames,time_str,rstfile):
          var_tmp = np.squeeze(dumpfile.variables[var][:])*scale_factor
          if var in ['xh']: var_tmp = var_tmp[:]
          elif var in ['yh']: var_tmp = var_tmp[:]
-
-         #--- Restagger grids in x/y directions  (JDL NEW)
-         #--- (helps with verification to get on reg grid)
+         #--- Stagger grids in x/y directions, while deleting edges  (JDL NEW)
+         #--- This is done so forecast and obs grids align in horizontal
          if var in ['xh','yh']:
             var_tmp = (var_tmp[0:-1] + var_tmp[1:])/2.
          if var in ['zh']:
@@ -75,15 +74,17 @@ def gen_model_output(path,varnames,time_str,rstfile):
          #--- This makes for easy forecast verification when switching between grids
          #--- For w - unstagger the grid in the vertical
          var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
-         if var in ['ua','u']: unstag_ax = 2 #--- x-axis
-            var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,1:-1]),1) #--- Stagger Y-Axis
-         if var in ['va','v']: unstag_ax = 1 #--- y-axis
-            var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,1:-1,:]),2) #--- Stagger X-Axis
+         if var in ['ua','u']:
+            #--- Remove border gridpoints on edges of staggered x-grid and stagger y-axis
+            var_tmp = pydart.interp.shift_grid(np.squeeze(dumpfile.variables[var][0,:,:,1:-1]),1) 
+         elif var in ['va','v']:
+            #--- Remove border gridpoints on edges of staggered y-grid and stagger x-axis
+            var_tmp = pydart.interp.shift_grid(np.squeeze(dumpfile.variables[var][0,:,1:-1,:]),2) 
          else: #--- Grids initially unstaggered in Horizontal
-            var_tmp = pydart.interp.unstagger_grid(var_tmp[:,:,:],2) #--- stagger x-axis
-            var_tmp = pydart.interp.unstagger_grid(var_tmp[:,:,:],1) #--- stagger y-axis
+            var_tmp = pydart.interp.shift_grid(var_tmp[:,:,:],2) #--- stagger x-axis
+            var_tmp = pydart.interp.shift_grid(var_tmp[:,:,:],1) #--- stagger y-axis
             if var in ['wa','w']:
-               var_tmp = pydart.interp.unstagger_grid(var_tmp[:,:,:],0) #--- Unstagger Z-axis
+               var_tmp = pydart.interp.shift_grid(var_tmp[:,:,:],0) #--- Unstagger Z-axis
       model[varnames[var]] = var_tmp
 
    #--- Other Grid Parameters

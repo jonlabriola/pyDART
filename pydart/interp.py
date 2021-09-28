@@ -177,12 +177,12 @@ def interp_wghts(x, xc, extrapolate=False):
       return i0, i1, dx0, dx1, dx
 #===============================================================================
 
-def unstagger_grid(var,axis):
+def shift_grid(var,axis):
    """
-   Program to unstagger grids
+   Program to shift forecast grids between staggered and unstaggered
    Required Inputs:
    var:  array with an undetermined number of dimensions
-   axis: The axis to perform "unstaggering"
+   axis: The axis to perform "shifting"
 
    """
 
