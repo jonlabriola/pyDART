@@ -143,7 +143,7 @@ def calcHx(fcst, xloc, yloc, height, elv, azimuth,
 
             # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
             refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
-            vfall  =  0 #2.6 * refl**0.107 * (1.2/b[4])**0.4
+            vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
             Hx_Z[k,j,i] = np.clip(b[3],_dbz_min,_dbz_max)  
             if Hx_Z[k,j,i] >= clear_dbz: # --- Remove Radial Velocity Observations from Regions of Clear Air
               Hx_vr[k,j,i] = b[0]*math.sin(azimuth[k,j,i])*math.cos(elv[k,j,i]) + b[1]*math.cos(azimuth[k,j,i])*math.cos(elv[k,j,i]) + (b[2]-vfall)*math.sin(elv[k,j,i])
@@ -232,7 +232,6 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
         refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
         vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
         Hx_Z[k] =  np.where(np.isnan(zloc[k]),np.nan,np.clip(b[3],_dbz_min,_dbz_max))
-        Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz,b[0],np.nan) 
         Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz,
                          (b[0]*np.sin(azimuth[k])*np.cos(elv[k])) + (b[1]*np.cos(azimuth[k])*np.cos(elv[k])) + ((b[2]-vfall)*np.sin(elv[k])),
                          np.nan)
