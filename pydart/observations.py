@@ -158,7 +158,6 @@ class obs_plat(object):
 
          if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
-            print('JDL OB-U = ',self.ob[zindex])
 
          elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    

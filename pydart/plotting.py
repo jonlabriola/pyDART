@@ -67,9 +67,6 @@ def twod_plot(var_class,varname,tilt=1,outname=None,copy_name=None):
    else:
       xx,yy = np.meshgrid(var_class['xloc'][tilt,0,:]/1000.,var_class['yloc'][tilt,:,0]/1000.)
  
-   zh = var_class['zloc'][tilt,:,:]
-   var_class[copy_name][tilt] = np.where(zh < 150, np.nan, var_class[copy_name][tilt])  
-    
    print('Var max = ',np.nanmax(var_class[copy_name][tilt]))
    print('Var min = ',np.nanmin(var_class[copy_name][tilt]))
    CS = plt.pcolormesh(xx,yy,var_class[copy_name][tilt],cmap=cmap,norm=norm,alpha=1.0,shading='auto',edgecolors='none')
