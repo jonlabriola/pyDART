@@ -3,7 +3,7 @@ import numpy as np
 #--- Convert either observation class to obs_sequence file 
 parser = argparse.ArgumentParser()
 parser.add_argument("file_loc",type=str,default='./',help='The pathway the pickle files are located')
-parser.add_argument("--time",type=str,default='200905152323',help='The last output time (if different from first)')
+parser.add_argument("--time",type=str,default='20090515232300',help='Evaluated Output Time (YYYYMMDDHHMMSS)')
 parser.add_argument("--conv",action='store_true',help='Work only with conventional obs')
 parser.add_argument("--radar",action='store_true',help='Work only with radar obs')
 parser.add_argument("--outpath",type=str,default='N/A',help='Output path, if desired')

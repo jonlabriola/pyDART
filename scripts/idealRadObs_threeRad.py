@@ -109,5 +109,5 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    vrerr = np.ones(radobs.obvr.shape)*vr_error  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
    radobs.addob(varname, vrerr, obvr=True) 
 
-output_path = '%s/radar_obs_%04d%02d%02d%02d%02d.pickle'%(output_path,radobs.model['year'],radobs.model['month'],radobs.model['day'],radobs.model['hour'],radobs.model['minute'])
+output_path = '%s/radar_obs_%04d%02d%02d%02d%02d%02d.pickle'%(output_path,radobs.model['year'],radobs.model['month'],radobs.model['day'],radobs.model['hour'],radobs.model['minute'],radobs.model['second'])
 pickle.dump(radobs,open(output_path, "wb" ) )
