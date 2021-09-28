@@ -71,21 +71,19 @@ def gen_model_output(path,varnames,time_str,rstfile):
          if var in ['zh']:
             if var_tmp.ndim > 1: var_tmp = var_tmp[:,0,0] # Remove Extra Dimensions added by DART
       else:
-         if var in ['ua','va','wa','u','v','w']: #--- Unstagger the grid for certain vars
-            if var in ['ua','u']: unstag_ax = 2 #--- x-axis
-            if var in ['va','v']: unstag_ax = 1 #--- y-axis
-            if var in ['wa','w']: unstag_ax = 0 #--- z-axis
-            var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,:]),unstag_ax)
-            var_tmp = var_tmp[:,:,:]
-         else: #--- No Staggered Grids
-            var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
-            var_tmp = var_tmp[:,:,:]
-
-         #--- Restagger Grid in  x/y directions (JDL NEW)
-         #--- (Helps with Foreast verification)
-         var_tmp = (var_tmp[:,0:-1,:] + var_tmp[:,1:,:])/2. #-- y-dir
-         var_tmp = (var_tmp[:,:,0:-1] + var_tmp[:,:,1:])/2. #-- x-dir
-
+         #--- We want all grids to be staggered in the horizontal
+         #--- This makes for easy forecast verification when switching between grids
+         #--- For w - unstagger the grid in the vertical
+         var_tmp = np.squeeze(dumpfile.variables[var][0,:,:,:])
+         if var in ['ua','u']: unstag_ax = 2 #--- x-axis
+            var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,:,1:-1]),1) #--- Stagger Y-Axis
+         if var in ['va','v']: unstag_ax = 1 #--- y-axis
+            var_tmp = pydart.interp.unstagger_grid(np.squeeze(dumpfile.variables[var][0,:,1:-1,:]),2) #--- Stagger X-Axis
+         else: #--- Grids initially unstaggered in Horizontal
+            var_tmp = pydart.interp.unstagger_grid(var_tmp[:,:,:],2) #--- stagger x-axis
+            var_tmp = pydart.interp.unstagger_grid(var_tmp[:,:,:],1) #--- stagger y-axis
+            if var in ['wa','w']:
+               var_tmp = pydart.interp.unstagger_grid(var_tmp[:,:,:],0) #--- Unstagger Z-axis
       model[varnames[var]] = var_tmp
 
    #--- Other Grid Parameters
