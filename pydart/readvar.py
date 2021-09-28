@@ -18,7 +18,7 @@ def read_cm1(path,time_str=None):
    try:
       #--- Restart File
       varnames = {'ua':'u','va':'v','wa':'w','dbz':'dbz','rho':'rho',
-                  'prs':'p','theta':'pt','qv':'qv','xh':'xh','yh':'yh','zh':'zh','fall_spd':"fall"}
+                  'prs':'p','theta':'pt','qv':'qv','xh':'xh','yh':'yh','zh':'zh'}
       model = gen_model_output(path,varnames,time_str,rstfile=True)
       print('Working with a Restart File')
    except:

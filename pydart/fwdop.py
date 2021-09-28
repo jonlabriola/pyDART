@@ -214,37 +214,25 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
 
      if dbzOnly:  # DBZ
         #--- Linear Interpolation
-        varhi   =  np.amax(np.where(grid_points[:] == vertpts,  fcst['dbz'],0),axis=0)
-        varlow  =  np.amax(np.where(grid_points[:] == vertpts-1, fcst['dbz'],0),axis=0)
+        varhi   =  np.nanmax(np.where(grid_points[:] == vertpts,  fcst['dbz'],np.nan),axis=0)
+        varlow  =  np.nanmax(np.where(grid_points[:] == vertpts-1, fcst['dbz'],np.nan),axis=0)
         var_interp = np.where(vertpts == 0,varhi,((1-(dzhi/dztot))*varhi) + (((dzhi)/dztot)*varlow))
         var_interp[np.isnan(zloc[k])] = np.nan
   
         Hx_Z[k] = np.where(np.isnan(zloc[k]),np.nan,np.clip(var_interp,_dbz_min,_dbz_max))
 
      else: #DBZ, VR
-        if 'fall' in fcst.keys():
-           #print('Working with Fall Speeds')
-           variables = ["u", "v", "w", "dbz", "rho", "fall"]
-        else: 
-           #print('Calculating Fall Speed Seperately')
-           variables = ["u", "v", "w", "dbz", "rho"]
+        variables = ["u", "v", "w", "dbz", "rho"]
         b = np.zeros((len(variables),ny,nx))
         for m, key in enumerate(variables):
-           #print('The min value for %s is %d'%(key,np.amin(fcst[key])))
            varhi   =  np.nanmax(np.where(grid_points[:] == vertpts,  fcst[key],np.nan),axis=0)
            varlow  =  np.nanmax(np.where(grid_points[:] == vertpts-1,fcst[key],np.nan),axis=0)
            b[m] = np.where(vertpts == 0,varhi,((1-(dzhi/dztot))*varhi) + (((dzhi)/dztot)*varlow))
-           # JDL There are additional interpolation bugs - figure what the problem is.
 
-        # In CM1, dont have fall speed from microphysics, so use typical DBZ power law here
-        if 'fall' in fcst.keys():
-           vfall  = b[5]
-        else:
-           refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
-           vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
+        refl   = 10.0**(0.1*np.clip(b[3],_dbz_min,_dbz_max))
+        vfall  =  2.6 * refl**0.107 * (1.2/b[4])**0.4
         Hx_Z[k] =  np.where(np.isnan(zloc[k]),np.nan,np.clip(b[3],_dbz_min,_dbz_max))
         Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz,b[0],np.nan) 
-        #print('The min U is = ',np.nanmin(Hx_vr[k]))
         Hx_vr[k] = np.where(Hx_Z[k] >= clear_dbz,
                          (b[0]*np.sin(azimuth[k])*np.cos(elv[k])) + (b[1]*np.cos(azimuth[k])*np.cos(elv[k])) + ((b[2]-vfall)*np.sin(elv[k])),
                          np.nan)
