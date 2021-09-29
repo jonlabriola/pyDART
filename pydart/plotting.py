@@ -77,3 +77,31 @@ def twod_plot(var_class,varname,tilt=1,outname=None,copy_name=None):
       plt.savefig(outname)
       plt.clf()
 
+
+def gen_performance():
+   """
+   This function can be used to generate a simple performance diagram.
+   Once the diaggram is created you can add your own FOH/POD pairs
+  
+   Required Inputs:
+      None
+
+   Returns: Figure Object to be used for plotting
+   """
+   figure = plt.figure(figsize=(14,11))
+   x=y= np.arange(0,1.1,.01)
+   X,Y = np.meshgrid(x,y)
+   CSI = ((1/X)+(1/Y)-1)**-1
+   #CS = plt.contourf(X,Y,CSI,np.arange(0.1,1.2,.2),colors=['#ffe6e6','#ff9999','#ff6666','#ff3333','#cc0000'])
+   CS = plt.contourf(X,Y,CSI,np.arange(0.1,1.2,.2),colors=['#bfbfbf','#a6a6a6','#8c8c8c','#737373','#595959'])
+   biases = [0.25,0.7,1,1.5,4]
+   for i in biases:
+      plt.annotate('%.2f'%i,(.5,.5*i),fontsize=10)
+   Bias = Y/X
+   BS = plt.contour(X,Y,Bias,biases,colors='black',linestyles='--')
+   CB = plt.colorbar(CS, shrink=0.8, ticks = [0.1,0.3,0.5,0.7,0.9])
+   CB.set_label('CSI')
+   plt.xlim([0,1])
+   plt.ylim([0,1])
+   return figure
+

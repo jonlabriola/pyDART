@@ -4,3 +4,4 @@ import pydart.observations
 import pydart.plotting
 import pydart.readvar
 import pydart.sequence
+import pydart.verification
