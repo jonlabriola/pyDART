@@ -14,6 +14,7 @@ parser.add_argument("--platform",type=int,default=1,help='The platform number (d
 parser.add_argument("--tilt",type=int,default=1,help='Radar tilt (default = 1)')
 parser.add_argument("--nen",type=int,default=10,help='The number of ensembles (default=10)')
 parser.add_argument("--nmem",type=int,default=40,help='The number of members in an ensemble (default=40)')
+parser.add_argument("--no_prof",action='store_true',help='Select experiment with no profiler during DA')
 arguments = parser.parse_args()
 
 platform_name = 'radar_%03d'%arguments.platform
@@ -37,7 +38,12 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
 
    #--- Loop through each member, grab statistics and Plot
    for mindex,mem in enumerate(range(1,41)):
-      fcst_path = '/scratch/jonathan.labriola/osse/ens_all/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+      if arguments.no_prof:
+         fcst_path = '/scratch/jonathan.labriola/osse/ens_rdr/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+      else:
+         fcst_path = '/scratch/jonathan.labriola/osse/ens_all/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+
+  
       radar = pickle.load(open(fcst_path,"rb"))
       fcst = radar.obs[platform_name][arguments.var]['obs'][arguments.tilt]
       FOH[mindex],POD[mindex],CSI[mindex],BIA[mindex] = pydart.verification.performance_scores(fcst,obs,45,kernel=arguments.kernel)
@@ -60,5 +66,8 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
    plt.scatter(FOH_ENS[eindex],POD_ENS[eindex],color=cols[eindex],s=500,label='ENS%03d: CSI(%2.2f) BIAS(%2.2f)'%(ens,CSI_ENS[eindex],BIA_ENS[eindex]))
 plt.scatter(np.mean(FOH_ENS),np.mean(POD_ENS),color='k',s=500,label='MEAN: CSI(%2.2f) BIAS(%2.2f)'%(np.mean(CSI_ENS),np.mean(BIA_ENS)))
 plt.legend(loc=2)
-plt.savefig('Performance_%s_mean_%3.2f.png'%(arguments.time,arguments.kernel),dpi=300)
+if arguments.no_prof:
+   plt.savefig('Performance_%s_mean_%3.2f_rdr.png'%(arguments.time,arguments.kernel),dpi=300)
+else:
+   plt.savefig('Performance_%s_mean_%3.2f_all.png'%(arguments.time,arguments.kernel),dpi=300)
 plt.clf()
