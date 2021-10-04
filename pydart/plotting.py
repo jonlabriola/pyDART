@@ -21,6 +21,12 @@ def get_colors(varname):
    elif varname == 'az':
       contours = np.arange(0,360,10.)
       colormap = plt.get_cmap("gist_stern")
+   elif varname.lower() in ['nep','nmep']:
+      contours = np.array([0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0])
+      colormap = ['#FFFFFF', '#DDF0FF', '#CCE0FF', '#88AAFF', '#4477FF', '#FFFF99', '#F0F000',
+                        '#C0C000', '#FF7777', '#FF2222', '#CC0000', '#AA0000']
+      cb_ticks = np.array([0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0])
+      colormap = matplotlib.colors.ListedColormap(colormap,cb_ticks)
    else:
       contours = np.arange(0,5000.,500.)
       colormap = plt.get_cmap("gist_stern")
@@ -31,16 +37,26 @@ def get_colors(varname):
 
    return cmap,norm,cb_ticks
 
-def rough_plot(var,varname,outname=None):
+def rough_plot(var,varname,outname=None,**kwargs):
    """
    JDL - A Rough and dirty plot to show to check results
    """
-   colormap = get_colors(varname)
+   cmap,norm,cb_ticks = get_colors(varname)
    CS = plt.pcolormesh(var,cmap=cmap,norm=norm,alpha=1.0,shading='auto',edgecolors='none')
    plt.colorbar(CS)
+  
+   #--- Add on Contours (If Desired)
+   if 'contour_var' in kwargs:
+      if 'threshold' in kwargs:
+         threshold = [0,kwargs['threshold']]
+      else:
+         threshold = [0,1]
+      plt.contour(kwargs['contour_var'],threshold,linewidth=5.0)
+
    if outname is None:
       plt.show()
    else:
+      print('Saving ...',outname)
       plt.savefig(outname)
       plt.clf()
 
@@ -105,3 +121,54 @@ def gen_performance():
    plt.ylim([0,1])
    return figure
 
+
+def plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,**kwargs):
+   """
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Goal:  Plot standard variables Reliability Curve
+   !
+   ! Need:  All of the data obtained from Reliability
+   !
+   ! Produced June 9, 2015
+   ! Author: Jon Labriola
+   !
+   ! Modifications: NONE
+   !
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   """
+
+   plt.xticks(np.arange(0.0, 1.2, 0.2))
+   plt.yticks(np.arange(0.0, 1.2, 0.2))
+
+   plt.axis([0., 1., 0., 1.])
+   if 'linecolor' in kwargs:
+     linecolor = kwargs['linecolor']
+   else:
+     linecolor = 'black'
+
+   #Need sample_climo, no_skill
+   plt.fill_between(np.arange(0, 1.001, 0.001), no_skill, np.ones((1001)), where=no_skill>sample_climo, edgecolor='#CCCCCC', facecolor='#CCCCCC', interpolate=True)
+   plt.fill_between(np.arange(0, 1.001, 0.001), np.zeros((1001)), no_skill, where=no_skill<sample_climo, edgecolor='#CCCCCC', facecolor='#CCCCCC', interpolate=True)
+
+   #Need obs_frequency
+   frequency_masked = np.ma.masked_where(obs_frequency < 0, obs_frequency)
+
+   #--- Plotting
+   if 'label' in kwargs:
+      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = 5.0,label=kwargs['label'])
+   else:
+      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = 5.0) #label = 'ROC= '+'%.3f'%ROC)
+
+   #Perfect reliability line
+   #Need bin_centers
+   plt.plot(bin_centers, bin_centers, color='#000000', linewidth=1.5, linestyle='--')
+
+   #No resolution line (sample climatology)
+   #bin_climo and bin_centers
+   plt.plot(bin_centers, bin_climo, color='#000000', linewidth=1.5, linestyle='--')
+
+
+   if 'outpath' in kwargs:
+     print("Plot saved to " + str(kwargs['outpath']))
+     plt.savefig(kwargs['outpath'], figsize = (13, 13), dpi=300)
+     plt.clf()
