@@ -242,16 +242,21 @@ class read_sequence():
    """
    This class is used to read in observation sequence files 
    """
-   def __init__(self,filepath,ntilt=None,ny=None,nx=None):
+   def __init__(self,filepath,ntilt=None,ny=None,nx=None,radar=False,conv=False):
       self.read_header(filepath)
       self.obs = {}
       self.missing = 99999.
-      self.read_rad_obs(filepath)
-      if ntilt is None or ny is None or nx is None:
-         pass
+      if radar: #--- Read in Radar Observations
+         self.read_rad_obs(filepath)
+         if ntilt is None or ny is None or nx is None:
+            pass
+         else:
+            self.reshape_rad_obs(ntilt,ny,nx)
+      elif conv:
+        self.read_conv_obs(filepath)
       else:
-         self.reshape_rad_obs(ntilt,ny,nx)
-      #self.read_conv_obs(filepath)
+        print('You are reading in neither radar nor conventional observations')
+
 
    def read_header(self,filepath):
       """
@@ -457,7 +462,7 @@ class read_sequence():
             
                   obcount += 1
 
-   #def read_conv_obs(self,filepath):
+
 
    def reshape_rad_obs(self,ntilt,ny,nx):
       """
@@ -475,6 +480,126 @@ class read_sequence():
             for obtype in  self.obs[platform].keys():
                for reshape_key in self.obs[platform][obtype].keys():
                   self.obs[platform][obtype][reshape_key] = np.reshape(self.obs[platform][obtype][reshape_key],(ntilt,ny,nx),order='F')
+
+   def read_conv_obs(self,filepath):
+      """
+      A function that is used to read in conventional observations saved at different heights
+
+      Required arguments:
+         filepath - The pathways to the sequence file that is to be read in
+      """  
+      #--- Read in the sequence file
+      #--- Define the important indices for each observation
+      lines = open(filepath)
+      conv_obs = lines.readlines()
+      plat_index   = len(self.copy_name) + 1    #--- Observation Platform
+      flag_index   = len(self.copy_name) + 2    #--- JDL Flag   
+      dartqc_index = len(self.copy_name) + 3    #--- DART QC Flag
+      loc_index    = len(self.qc) + len(self.copy_name) + 4 #--- Location of the Observation locations
+      kindex       = len(self.qc) + len(self.copy_name) + 6 #--- Observation Kind
+
+
+      nobs = 0
+      nplat = 1
+      nobs_conv = []
+      conv_uindex  = []
+      conv_vindex  = []
+      conv_qvindex = []
+      conv_tindex  = []
+
+      conv_obnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
+                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']
+   
+     
+      obcode = pydart.readvar.obcode() #--- Listed Observations
+      for key in obcode.keys():
+         if 'RADIOSONDE_U_WIND_COMPONENT'  in key: conv_ucode = obcode[key]
+         if 'RADIOSONDE_V_WIND_COMPONENT'  in key: conv_vcode = obcode[key]
+         if 'RADIOSONDE_TEMPERATURE'       in key: conv_tcode = obcode[key]
+         if 'RADIOSONDE_SPECIFIC_HUMIDITY' in key: conv_qvcode = obcode[key]
+      
+      #--- Step 1: Get The Number of Observations For Each Profiler
+      #--- Save the location where the u,v,T,qv observations can
+      #--- be found
+   
+      #--- nobs_conv = The number of either dbz / vr obs per radar
+      #--- conv_(u,v,qv,t)index = Indices where radar obs start
+      for index in self.obindex:
+         platform = float(conv_obs[index+plat_index].split()[0])
+         if int(conv_obs[kindex+index]) == conv_ucode:
+            conv_uindex.append(index)
+            if platform > nplat:
+               nobs_conv.append(nobs) 
+               nobs = 1
+               nplat = platform
+            else:
+               nobs += 1
+         elif int(conv_obs[kindex+index]) == conv_vcode:
+            conv_vindex.append(index)
+         elif int(conv_obs[kindex+index]) == conv_qvcode:
+            conv_qvindex.append(index)
+         elif int(conv_obs[kindex+index]) == conv_tcode:
+            conv_tindex.append(index)
+      
+      #--- Add Final Radar Platform Info
+      nobs_conv.append(nobs)
+
+
+      #--- Step 2: Create the Radar Dictionary
+      #--- First Loop over Each Radar
+      for nconv,nob_per_conv in enumerate(nobs_conv):
+         plat_name = 'pro_%03d'%(nconv+1)
+         self.obs[plat_name]={}
+         #--------------------------#
+         #--- LOOP OVER CONV OBS ---#
+         #--------------------------#
+         for obname in conv_obnames:
+            self.obs[plat_name][obname] = {}
+            self.obs[plat_name][obname]['xloc']     = np.zeros((nob_per_conv))
+            self.obs[plat_name][obname]['yloc']     = np.zeros((nob_per_conv))
+            self.obs[plat_name][obname]['zloc']     = np.zeros((nob_per_conv))
+            self.obs[plat_name][obname]['flag']    = np.zeros((nob_per_conv))  
+            self.obs[plat_name][obname]['DART_QC'] = np.zeros((nob_per_conv))
+            for cindex,copy in enumerate(self.copy_name):
+               #--- Loop Over the Different Copy Types
+               self.obs[plat_name][obname][copy] = np.zeros((nob_per_conv)) 
+               obcount = 0
+             
+               if 'RADIOSONDE_U_WIND_COMPONENT'    in obname: ob_index = conv_uindex
+               elif 'RADIOSONDE_V_WIND_COMPONENT'  in obname: ob_index = conv_vindex 
+               elif 'RADIOSONDE_TEMPERATURE'       in obname: ob_index = conv_tindex
+               elif 'RADIOSONDE_SPECIFIC_HUMIDITY' in obname: ob_index = conv_qvindex
+               else: print("Unspecified Observation Type")
+ 
+               for oindex in ob_index: #--- Loop over respective indicies for each observation type
+                  #--- Make sure platform number is the same as conventional number
+                  if float(conv_obs[oindex+plat_index]) == nconv+1: 
+                     ob_loc = conv_obs[oindex+loc_index].split()
+                     flag  = float(conv_obs[oindex+flag_index])
+                     if flag >= self.missing:
+                        self.obs[plat_name][obname][copy][obcount]      = np.nan
+                     else:
+                        self.obs[plat_name][obname][copy][obcount]      = float(conv_obs[oindex+cindex+1])
+                     if cindex == 0:
+                        if flag >= self.missing:
+                           self.obs[plat_name][obname]['xloc'][obcount]    = np.nan
+                           self.obs[plat_name][obname]['yloc'][obcount]    = np.nan
+                           self.obs[plat_name][obname]['zloc'][obcount]    = np.nan 
+                           self.obs[plat_name][obname]['flag'][obcount]    = float(conv_obs[oindex+flag_index])
+                           self.obs[plat_name][obname]['DART_QC'][obcount] = np.nan
+                        else:
+                           self.obs[plat_name][obname]['xloc'][obcount]    = float(ob_loc[0])
+                           self.obs[plat_name][obname]['yloc'][obcount]    = float(ob_loc[1])
+                           self.obs[plat_name][obname]['zloc'][obcount]    = float(ob_loc[2]) 
+                           self.obs[plat_name][obname]['flag'][obcount]    = float(conv_obs[oindex+flag_index])
+                           #--- DART QC is not created until after DA so make sure the statement is option
+                           try:
+                              self.obs[plat_name][obname]['DART_QC'][obcount] = float(conv_obs[oindex+dartqc_index])
+                           except:
+                              self.obs[plat_name][obname]['DART_QC'][obcount] = np.nan
+                     obcount += 1
+
+
 
 #---Step 6 Create NetCDF file
 #fn = 'radar_obs.nc'
