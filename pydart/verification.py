@@ -84,15 +84,29 @@ def performance_scores(fcst,obs,threshold,kernel=None):
       kernel:  The kernel radius of influence for forecasts
                and observations. (Ignored if not specified)
    """
-   if kernel is not None:
+   if kernel is not None and kernel > 0.:
      fcst = gen_buffer(fcst,kernel,threshold)
      obs = gen_buffer(obs,kernel,threshold)
-   
+  
+   print('fcst shape =',fcst.shape) 
+   print('obs shape =',obs.shape) 
    a,b,c,d = contingency(fcst,obs,threshold)
-   FOH  = float(a)/float(a+b)
-   POD  = float(a)/float(a+c)
-   CSI  = float(a)/float(a+b+c)
-   BIAS = float(a+b)/float(a+c)
+   if a > 0 and b > 0:
+      FOH  = float(a)/float(a+b)
+   else:
+      FOH = 0
+   if a > 0 and c > 0:
+      POD  = float(a)/float(a+c)
+   else:
+      POD = np.nan
+   if a > 0 and b > 0 and c > 0:
+      CSI  = float(a)/float(a+b+c)
+   else:
+      CSI = 0
+   if a > 0 and c > 0:
+      BIAS = float(a+b)/float(a+c)
+   else:
+      BIAS = 0
    return FOH,POD,CSI,BIAS
 
 def nmep(fcst,kernel,threshold,smooth=True):
@@ -205,7 +219,7 @@ def createReliability(NEP,obs,threshold,perc = False,min_val=5.0):
    return sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,reliability_bins,bin_count
 
 
-def pmmean(var2D_ens):
+def pmmean_OLD(var2D_ens):
    """
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Goal:  Make the probability Matched Mean of
@@ -253,11 +267,11 @@ def pmmean(var2D_ens):
    all_values.reverse()
 
    #Tethering array elements to their position as tuples ensures the sort is reversible.
-   position_tuples = zip(tethered_1d, ensmean_1d)
+   position_tuples = list(zip(tethered_1d, ensmean_1d))
    #The lambda performs a "mini-function" -- google "python lambda notation" for info.
    sorted_tuples = sorted(position_tuples, key = lambda x: x[1])
    sorted_tuples.reverse()  #Put largest values first
-   sorted_tuples = zip(*sorted_tuples)
+   sorted_tuples = list(zip(*sorted_tuples))
    tethered_1d = sorted_tuples[0]
    ensmean_1d = sorted_tuples[1]
 
@@ -269,10 +283,83 @@ def pmmean(var2D_ens):
       loc_jrank = np.mod(tethered_1d[point], ny)
       loc_irank = np.floor(int(tethered_1d[point] / ny))
 
-      pm_mean[loc_jrank, loc_irank] = all_values[0 + (n_ens * point)]
+      #print '********'
+      #print '%s %s %s %s'%(loc_jrank, loc_irank, n_ens, point)
+
+      pm_mean[int(loc_jrank), int(loc_irank)] = all_values[0 + int(n_ens * point)]
+   return pm_mean
+def pmmean(var2D_ens):
+   """
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Goal:  Make the probability Matched Mean of
+   !        an ensemble  quantity
+   !
+   ! Need: Ensemble Vals
+   ! Note: Ens Shape= [n_ens,ny,nx,]
+   !
+   ! Produced June 5, 2015
+   ! Author: Jon Labriola
+   !
+   ! Modifications: Flipped N_ens to be the first
+   !                coordinate - Easier to put in
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   """
+   print("JDL IM HERE")
+   n_ens = var2D_ens.shape[0]
+   ny = var2D_ens.shape[1]
+   nx = var2D_ens.shape[2]
+
+   ensmean = np.mean(var2D_ens, axis=0) #Calculate ensemble mean
+
+   all_values = []
+   for jy in np.arange(0, ny):
+      for ix in np.arange(0, nx):
+         for member in np.arange(0, n_ens):
+            all_values.append(var2D_ens[member, jy, ix])
+
+   #Construct a tethered array to track where our ranked values are.
+   tethered_array = np.zeros((ny, nx))
+   for jy in np.arange(0, ny):
+      for ix in np.arange(0, nx):
+         tethered_array[jy, ix] = jy + (ny * ix)
+
+   #Construct 1-D arrays to rank values
+   ensmean_1d = []
+   tethered_1d = []
+   for jy in np.arange(0, ny):
+      for ix in np.arange(0, nx):
+         ensmean_1d.append(ensmean[jy, ix])
+         tethered_1d.append(tethered_array[jy, ix])
+
+   #Prepare the all_values array by sorting it from high to low:
+   all_values.sort()
+   all_values.reverse()
+
+   #Tethering array eements to their position as tuples ensures the sort is reversible.
+   position_tuples = list(zip(tethered_1d, ensmean_1d))
+   #The lambda performs a "mini-function" -- google "python lambda notation" for info.
+   sorted_tuples = sorted(position_tuples, key = lambda x: x[1])
+   sorted_tuples.reverse()  #Put largest values first
+   sorted_tuples = list(zip(*sorted_tuples))
+   tethered_1d = sorted_tuples[0]
+   ensmean_1d = sorted_tuples[1]
+
+   pm_mean = np.zeros((ny, nx))
+
+   for point in np.arange(0, nx*ny, 1):
+      #The tethered array stores information on the position of the ranked points in ensmean.
+      #We must first convert this data back into i- and j-locations, then assign the corresponding data.
+      loc_jrank = np.mod(tethered_1d[point], ny)
+      loc_irank = np.floor(int(tethered_1d[point] / ny))
+
+      #print '********'
+      #print '%s %s %s %s'%(loc_jrank, loc_irank, n_ens, point)
+
+      pm_mean[int(loc_jrank), int(loc_irank)] = all_values[0 + int(n_ens * point)]
 
    return pm_mean
 
+#--------------------------------------------------------------------#
 def ROC(NEP,obs,threshold):
    """
    Calculate the Relative Operating Characteristic

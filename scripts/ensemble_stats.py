@@ -1,7 +1,9 @@
 import pydart,argparse,pickle
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib
+matplotlib.rcParams['axes.linewidth'] = 1.5
+matplotlib.rcParams.update({'font.size': 22})
 #--- This Code Loops Through Each Ensemble
 #--- Calculates the FOH/POD of each Ensemble Member
 #--- Plots Individual Ensemble Members and Then the Ensemble Aeverage
@@ -9,7 +11,9 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument("var",type=str,help = 'Var to plot (RADAR_REFLECTIVITY, fine_z, etc.)')
 parser.add_argument("--mor",action='store_true',help='Load experiments run with Morrison Scheme')
+parser.add_argument("--multi_sound",action='store_true',help='Load experiment run with no profilers during DA')
 parser.add_argument("--no_prof",action='store_true',help='Load experiment run with no profilers during DA')
+parser.add_argument("--coarse_wind_shift",action='store_true',help='Load experiment run on 3 km grid with u7/v7 wind shift')
 parser.add_argument("--kernel",type=float,default=2.5,help='The kernel radius applied to forecasts/observations')
 parser.add_argument("--time",type=str,default='20090516003300',help='The location of the dmax file')
 parser.add_argument("--platform",type=int,default=1,help='The platform number (default = 1)')
@@ -32,15 +36,24 @@ else:
    exp_tag = 'ens_all'
 if arguments.mor:
    mp_tag = 'Morrison'
+elif arguments.multi_sound:
+   mp_tag = 'Multi_Sounding'
+elif arguments.coarse_wind_shift:
+   mp_tag = '3km_NSSL_u7v7'
 else:
    mp_tag = 'NSSL'
 
 #--- Loop through each ensemble, plot individual members and ensemble mean
 for eindex,ens in enumerate(range(1,arguments.nen+1)):
    print('Ensemble = ',ens)
-   obs_path = '/work/jonathan.labriola/OSSE/QLCS/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
-   radar = pickle.load(open(obs_path,"rb"))
-   obs = radar.obs[platform_name][arguments.var]['obs'][arguments.tilt]
+   if arguments.coarse_wind_shift:
+      obs_path = '/work/jonathan.labriola/OSSE/obs/3km/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
+      radar = pickle.load(open(obs_path,"rb"))
+      obs = radar.obs[platform_name][arguments.var]['obs'][arguments.tilt,:-1,:-1]
+   else:
+      obs_path = '/work/jonathan.labriola/OSSE/QLCS/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
+      radar = pickle.load(open(obs_path,"rb"))
+      obs = radar.obs[platform_name][arguments.var]['obs'][arguments.tilt]
    for mindex,mem in enumerate(range(1,arguments.nmem+1)):
       if arguments.no_prof:
          fcst_path = '/scratch/jonathan.labriola/osse/%s/%s/ens%03d/mem%03d/radar_obs_%s.pickle'%(mp_tag,exp_tag,ens,mem,arguments.time)
@@ -57,11 +70,13 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
 
    if arguments.pmmean:  #---Probabilist matched mean
       var = pydart.verification.pmmean(fcst)
+      #var = np.percentile(fcst,90,axis=0)
       varname = arguments.var
 
    elif arguments.mean:  #--- Probability matched mean
       var = np.mean(fcst,axis=0)
       varname = arguments.var
+
 
    else:  #--- NMEP/Reliability/AUC
       var = pydart.verification.nmep(fcst,arguments.kernel,arguments.threshold)      
@@ -70,8 +85,28 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
 
       if arguments.reliability:
          sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,reliability_bins,bin_count = pydart.verification.createReliability(var,obs,arguments.threshold)
+         if eindex == 0:
+            sample_climo_ens = np.zeros((arguments.nen,sample_climo.shape[0]))
+            
+            no_skill_ens = np.zeros((arguments.nen,no_skill.shape[0]))
+            obs_frequency_ens = np.zeros((arguments.nen,obs_frequency.shape[0]))
+            bin_centers_ens = np.zeros((arguments.nen,bin_centers.shape[0]))
+            bin_climo_ens = np.zeros((arguments.nen,bin_climo.shape[0]))
+            reliability_bins_ens = np.zeros((arguments.nen,reliability_bins.shape[0]))
+            bin_count_ens = np.zeros((arguments.nen,bin_count.shape[0]))
+            bss_ens = np.zeros((arguments.nen))
+         sample_climo_ens[eindex] = sample_climo
+         no_skill_ens[eindex] = no_skill
+         obs_frequency_ens[eindex] = obs_frequency
+         bin_centers_ens[eindex] = bin_centers
+         bin_climo_ens[eindex] = bin_climo
+         reliability_bins_ens[eindex] = reliability_bins
+         bin_count_ens[eindex] = bin_count
+ 
          figure = plt.figure
          BSS = pydart.verification.BSS(var,obs,arguments.threshold)
+         #BSS,pod,pofd = pydart.verification.auc(var,obs,arguments.threshold)
+         bss_ens[eindex] = BSS
          pydart.plotting.plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,linecolor = 'r',label='BSS = (%0.3f)'%(BSS))
          plt.legend()
          plt.savefig('Reliability_%s_ens%03d_%3.2f_%3.2f_%s.png'%(arguments.time,ens,arguments.kernel,arguments.threshold,exp_tag),dpi=300)
@@ -90,3 +125,21 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
          pydart.plotting.rough_plot(var,varname,outname=outname,contour_var=obs,threshold=arguments.threshold)
 
       plt.clf()
+
+
+if arguments.reliability:
+   #figure = plt.figure()
+   figure = plt.figure(figsize=(14,11))
+   cols = ['r','b','g','c','y','orangered','m','lime','cornflowerblue','tan']
+   for eindex,ens in enumerate(range(1,arguments.nen+1)):
+      pydart.plotting.plotReliability(np.mean(sample_climo_ens,axis=0),np.mean(no_skill_ens,axis=0),obs_frequency_ens[eindex],
+                                      np.mean(bin_centers_ens,axis=0),np.mean(bin_climo_ens,axis=0),linecolor = cols[eindex],label='ENS%02d (%0.3f)'%(ens,bss_ens[eindex]),linewidth=2.5)
+      #pydart.plotting.plotReliability(np.mean(sample_climo_ens[eindex],axis=0),np.mean(no_skill_ens[eindex],axis=0),obs_frequency_ens[eindex],
+      #                                np.mean(bin_centers_ens[eindex],axis=0),np.mean(bin_climo_ens[eindex],axis=0),linecolor = cols[eindex],label='BSS = (%0.3f)'%(bss_ens[eindex]))
+   pydart.plotting.plotReliability(np.mean(sample_climo_ens,axis=0),np.mean(no_skill_ens,axis=0),np.mean(obs_frequency_ens,axis=0),
+                                np.mean(bin_centers_ens,axis=0),np.mean(bin_climo_ens,axis=0),linecolor = 'k',label='MEAN (%0.3f)'%(np.mean(bss_ens)),linewsith=5)
+
+plt.xlabel('Forecast Probability')
+plt.ylabel('Observed Frequency')
+plt.legend(prop={"size":10})
+plt.savefig('Reliability_%s_ensembles_%3.2f_%3.2f_%s_%s.png'%(arguments.time,arguments.kernel,arguments.threshold,mp_tag,exp_tag),dpi=300)

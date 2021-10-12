@@ -146,6 +146,11 @@ def plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,**
    else:
      linecolor = 'black'
 
+   if 'linewidth' in kwargs:
+     linewidth = kwargs['linewidth']
+   else:
+     linewidth=5.
+
    #Need sample_climo, no_skill
    plt.fill_between(np.arange(0, 1.001, 0.001), no_skill, np.ones((1001)), where=no_skill>sample_climo, edgecolor='#CCCCCC', facecolor='#CCCCCC', interpolate=True)
    plt.fill_between(np.arange(0, 1.001, 0.001), np.zeros((1001)), no_skill, where=no_skill<sample_climo, edgecolor='#CCCCCC', facecolor='#CCCCCC', interpolate=True)
@@ -155,9 +160,9 @@ def plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,**
 
    #--- Plotting
    if 'label' in kwargs:
-      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = 5.0,label=kwargs['label'])
+      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = linewidth,label=kwargs['label'])
    else:
-      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = 5.0) #label = 'ROC= '+'%.3f'%ROC)
+      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = linewidth) #label = 'ROC= '+'%.3f'%ROC)
 
    #Perfect reliability line
    #Need bin_centers

@@ -114,7 +114,7 @@ class obs_plat(object):
       Must run estab_platform to define radar location first
       """
       if self.obtype == 'radar':
-         self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts,rad_top = self.max_hgt)     
+         self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts,rad_top = self.max_hgt)    
       else:
          print('Other observations types are not accomodated yet')
 
