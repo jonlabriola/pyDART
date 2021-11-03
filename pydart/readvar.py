@@ -60,7 +60,10 @@ def gen_model_output(path,varnames,time_str,rstfile):
 
    for var in varnames.keys():
       if var in ['xh','yh','zh']: #--- 1-D variables
-         var_tmp = np.squeeze(dumpfile.variables[var][:])*scale_factor
+         var_tmp = np.squeeze(dumpfile.variables[var][:])#*scale_factor
+         #--- JDL Check to Make Meters
+         if np.amax(var_tmp) < 5000:
+            var_tmp = var_tmp * scale_factor
          if var in ['xh']: var_tmp = var_tmp[:]
          elif var in ['yh']: var_tmp = var_tmp[:]
          #--- Stagger grids in x/y directions, while deleting edges  (JDL NEW)
@@ -111,8 +114,6 @@ def gen_model_output(path,varnames,time_str,rstfile):
 
       for tindex,time in enumerate(time_str):
          model[time] = mod_time.timetuple()[tindex]
-
-
    dumpfile.close()
    return(model)
 

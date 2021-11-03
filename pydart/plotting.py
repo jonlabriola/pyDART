@@ -62,6 +62,7 @@ def rough_plot(var,varname,outname=None,**kwargs):
 
 def twod_plot(var_class,varname,tilt=1,outname=None,copy_name=None):
    cmap,norm,cb_ticks = get_colors(varname)
+   print('JDL the tilt is ...',tilt)
    if copy_name is None:
       copy_name = 'obs'
 
@@ -82,6 +83,9 @@ def twod_plot(var_class,varname,tilt=1,outname=None,copy_name=None):
       xx,yy = np.meshgrid(xh,yh)  
    else:
       xx,yy = np.meshgrid(var_class['xloc'][tilt,0,:]/1000.,var_class['yloc'][tilt,:,0]/1000.)
+
+   for tindex in range(0,14):
+      print('Var max for tindex = ',np.nanmax(var_class[copy_name][tindex]))
  
    print('Var max = ',np.nanmax(var_class[copy_name][tilt]))
    print('Var min = ',np.nanmin(var_class[copy_name][tilt]))
@@ -146,6 +150,11 @@ def plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,**
    else:
      linecolor = 'black'
 
+   if 'alpha' in kwargs:
+      alpha = kwargs['alpha']
+   else:
+      alpha = 1.0
+
    if 'linewidth' in kwargs:
      linewidth = kwargs['linewidth']
    else:
@@ -160,9 +169,9 @@ def plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,**
 
    #--- Plotting
    if 'label' in kwargs:
-      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = linewidth,label=kwargs['label'])
+      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = linewidth,alpha=alpha,label=kwargs['label'])
    else:
-      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = linewidth) #label = 'ROC= '+'%.3f'%ROC)
+      plt.plot(bin_centers, frequency_masked, color = linecolor, linewidth = linewidth,alpha=alpha) #label = 'ROC= '+'%.3f'%ROC)
 
    #Perfect reliability line
    #Need bin_centers
@@ -177,3 +186,51 @@ def plotReliability(sample_climo,no_skill,obs_frequency,bin_centers,bin_climo,**
      print("Plot saved to " + str(kwargs['outpath']))
      plt.savefig(kwargs['outpath'], figsize = (13, 13), dpi=300)
      plt.clf()
+
+
+def calc_grid_dims(xloc,yloc,oned=False,return_km=False):
+   """
+  Calculate the locations of the horizontal grid points
+
+  Inputs:
+     xloc [ny,nx]  The x-grid information (can be computed from obs sequence)
+     yloc [ny,nx]  The y-grid information (can be computed from obs sequence)
+  
+
+  Optional:
+     oned: A flag to return one-dimension grid information similar to xh,yh
+     return_km: A flag to convert units to km
+
+  Returns
+
+     xx,yy [ny,nx] the horizontal grid point locations
+   """
+   if np.isnan(np.amax(xloc)) or np.isnan(np.amax(yloc)):
+      dx = np.nan
+      j = 1
+      while np.isnan(dx):
+         try:
+            dx = np.nanmin(xloc[j,1:] - xloc[j,0:-1])
+            j+=1
+         except:
+           print('end of the line no more grid points')
+      [ny,nx] = xloc.shape
+      xh = np.arange(0,nx*dx,dx)
+      yh = np.arange(0,ny*dx,dx)
+
+      if oned:
+         xx = xh
+         yy = yh
+      else:
+         xx,yy = np.meshgrid(xh,yh)
+   else:
+      if oned:
+         xx = xloc[0,:]
+         yy = yloc[:,0]
+      else:
+         xx,yy = np.meshgrid(xloc[0,:],yloc[:,0])
+
+   if return_km:
+      return xx/1000.,yy/1000.
+   else:
+      return xx,yy

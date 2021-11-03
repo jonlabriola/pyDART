@@ -163,6 +163,9 @@ class create_sequence():
                 yloc   = tmp['yloc'].flatten(order='F')
                 zloc   = tmp['zloc'].flatten(order='F')
                 error  = tmp['error'].flatten(order='F')
+                #--- JDL SWITCH ERROR
+                #error[error == 6.0] = 5.0
+                #error[error == 4.0] = 3.0
                 flag   = np.where(np.isnan(obs),missing,0.)
              
                 #--- Remove NaN's
@@ -190,7 +193,9 @@ class create_sequence():
                    #--- JDL This is done to avoid assimilating any observations on the edge boundaries (Results in a DART Error)
                    #--- This is currently hard coded for the QLCS Case 
                    #if xloc[oindex] < 1000. or xloc[oindex] > 199000. or yloc[oindex] < 1000. or yloc[oindex] > 199000. or zloc[oindex] < 0. or zloc[oindex] >14000:
-                   if xloc[oindex] < 1500. or xloc[oindex] > 196500. or yloc[oindex] < 1500. or yloc[oindex] > 196500. or zloc[oindex] < 0. or zloc[oindex] >14000:
+                   #if xloc[oindex] < 1500. or xloc[oindex] > 196500. or yloc[oindex] < 1500. or yloc[oindex] > 196500. or zloc[oindex] < 0. or zloc[oindex] >14000:
+                   #if xloc[oindex] < 3000. or xloc[oindex] > 194500. or yloc[oindex] < 3000. or yloc[oindex] > 194500. or zloc[oindex] < 0. or zloc[oindex] >14000:
+                   if xloc[oindex] < 3000. or xloc[oindex] > 597000. or yloc[oindex] < 3000. or yloc[oindex] > 297000. or zloc[oindex] < 0. or zloc[oindex] > 14000:
                       self.txtfile.write(" %20.14E\n"%np.absolute(99999.))
                    #--- JDL This is what you would do other wise
                    else:

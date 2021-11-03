@@ -52,5 +52,5 @@ if arguments.conv:
          print('The platform is ...',plat_name)
          for varname in varnames:
             plotvar = conv.obs[plat_name][varname]
-            #for key in plotvar.keys():
-               #print('Working on key %s'%key)
+            for key in plotvar.keys():
+               print('Working on key %s'%key)

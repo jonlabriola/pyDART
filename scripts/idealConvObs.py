@@ -32,8 +32,8 @@ if sim_snd:
    snd_err = [2.0,2.0,4.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
    #--- Vertical Ob Spacing
-   zmax = 15000.  #--- Max observation height is 15000 m
-   zincr = 500.   #--- Observation collected every 500 m
+   zmax_snd = 15000.  #--- Max observation height is 15000 m
+   zincr_snd = 500.   #--- Observation collected every 500 m
 
 if sim_sfc:
    #--- Block 2: Surface
@@ -80,8 +80,8 @@ if sim_pro:
 
    pro_err = [2.0,2.0,4.0,0.0005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
-   zmax  = 3000.    #--- Maximum profiler height
-   zincr = 250.     #--- Observation increment
+   zmax_pro  = 3000.    #--- Maximum profiler height
+   zincr_pro = 250.     #--- Observation increment
 
 #--- Argparse provides file name
 parser = argparse.ArgumentParser()
@@ -107,7 +107,7 @@ if sim_snd:
       #--- Loop over the sounding profiles for each observation
       for oindex,obvar in enumerate(snd_obs):
          #--- Define observation locations
-         hgts = np.arange(zsnd[ob],zmax+zincr,zincr)
+         hgts = np.arange(zsnd[ob],zmax_snd+zincr_snd,zincr_snd)
          hgts = hgts[np.where(hgts > min_hgt)] #--- Throw out all heights less than min model height 
          y_locations = np.ones(hgts.shape)*ysnd[ob]
          x_locations = np.ones(hgts.shape)*xsnd[ob]
@@ -130,7 +130,7 @@ if sim_pro:
       for oindex,obvar in enumerate(pro_obs):
 
          #--- Define observation locations
-         hgts = np.arange(convob.zloc,zmax+zincr,zincr)
+         hgts = np.arange(convob.zloc,zmax_pro+zincr_pro,zincr_pro)
          hgts = hgts[np.where(hgts > min_hgt)] #--- Throw out all heights less than min model height
          y_locations = np.ones(hgts.shape)*ypro[ob]
          x_locations = np.ones(hgts.shape)*xpro[ob]

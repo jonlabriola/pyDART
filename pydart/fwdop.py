@@ -192,7 +192,7 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
 
 
   nz_mod = fcst['zh'].shape[0]
-  mhgts = np.transpose(np.tile(fcst['zh'],(nx,nx,1)))
+  mhgts = np.transpose(np.tile(fcst['zh'],(nx,ny,1)))
 
   for k in range(0,ntilt):
      #--- Calculate observation heights against model heights

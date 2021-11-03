@@ -115,6 +115,7 @@ class obs_plat(object):
       """
       if self.obtype == 'radar':
          self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts,rad_top = self.max_hgt)    
+         print('JDL OBZ MAX =',np.nanmax(self.obz)) 
       else:
          print('Other observations types are not accomodated yet')
 
@@ -156,23 +157,23 @@ class obs_plat(object):
          xloc = self.obx[zindex]
          yloc = self.oby[zindex]
 
-         if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M']:
+         if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M','DROPSONDE_U_WIND_COMPONENT']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
 
-         elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M']:
+         elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M','DROPSONDE_V_WIND_COMPONENT']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
 
-         elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M']:
+         elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M','DROPSONDE_TEMPERATURE']:
             #self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
             #self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
             p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
             pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
             self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
 
-         elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE']:
+         elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE','DROPSONDE_SURFACE_PRESSURE']:
             self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
 
-         elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M']: #--- JDL Does CM1 use qv or specific humidity?
+         elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M','DROPSONDE_SPECIFIC_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
             #self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
             #self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
             qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
