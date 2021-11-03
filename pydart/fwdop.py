@@ -244,7 +244,7 @@ def calcHx_fast(fcst, xloc, yloc, zloc, elv, azimuth,
 
 
 
-def theta_to_temp(pt,p):
+def theta_to_temp(pt,p,deg_c=True):
    """
    Calculate temperature given potential temperature and pressure
 
@@ -252,8 +252,11 @@ def theta_to_temp(pt,p):
       pt:   Potential Temperature (K
        p:   Air Pressure (Pa)
 
+   optional: 
+   deg_c:  Return temperature in degree celsius (otherwise kelvin)
+ 
    return
-       T:   Air Temperature (C)
+       T:   Air Temperature (C - default, otherwise kelvin)
    """
 
    R = 287.            # J[kg * K]^-1
@@ -262,7 +265,9 @@ def theta_to_temp(pt,p):
    p_0 = 100000.
    T = pt / ( (p_0 / p) ** R_over_cp )
 
-   return T - 273.15
+   if deg_c: T += -273.15
+
+   return T 
 
 def qv_to_spechum(qv) : #--- JDL Does Forward Operator Calculatoe Specific Humidity or Just qv
    """
@@ -275,3 +280,43 @@ def qv_to_spechum(qv) : #--- JDL Does Forward Operator Calculatoe Specific Humid
    """
 
    return qv/(1+qv)
+
+def cal_td(qv,p):
+   """
+   Calculate dewpoint temperature
+   inputs:
+      qv: water vapor mixing ratio (kg/kg) 
+       p: atmospheric pressure (pa)
+
+   returns
+      Td: dewpoint temperature (C)
+   """
+   e=(qv/(qv+0.622))*p
+   e = e/100. #--- Convert to hPa
+
+   return (5.42E3/((5.42E3/273.)-np.log(e/6.11))) - 273.15
+
+
+def cal_rh(qv,p,pt,T=None):
+   """
+   Calculate the relative humidity
+   inputs:
+      qv: water vapor mixing ratio (kg/kg) 
+       p: atmospheric pressure (pa)
+      pt: potential temperature (K)
+ 
+   optional:
+      T: Atmospheric temperature (K) 
+
+   returns
+      Td: dewpoint temperature (C)
+
+   """
+   if T is None: T = theta_to_temp(p,pt,deg_c=False)
+   if np.amax(T)<110: T += 273.15 #--- Convert to Units C (If Necesary) 
+
+   #--- Calculate Vapor Pressure (e) and Saturation Vapor Pressure (es)
+   e = p * qv / (0.622 + qv) #--- JDL vapor pressure calculation is different from Td
+   es = 611 * np.exp(5.42E3 *((1./273.) - (1./T)))
+
+   return 100.*(e/es)

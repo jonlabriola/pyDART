@@ -179,6 +179,17 @@ class obs_plat(object):
             qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
             self.ob[zindex] =pydart.fwdop.qv_to_spechum(qv) 
 
+         elif varname.upper() in ['RADIOSONDE_DEWPOINT','DROPSONDE_DEWPOINT']: #--- JDL Does CM1 use qv or specific humidity?
+            qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+            p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            self.ob[zindex] =pydart.fwdop.cal_td(qv,p)
+          
+         elif varname.upper() in ['RADIOSONDE_RELATIVE_HUMIDITY','DROPSONDE_RELATIVE_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
+            qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+            p  = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+            self.ob[zindex] =pydart.fwdop.cal_rh(qv,p,pt)
+
          else:
             print('Observation Unknown: %s'%varname)
 
