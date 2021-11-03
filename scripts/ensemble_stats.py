@@ -13,6 +13,7 @@ parser.add_argument("var",type=str,help = 'Var to plot (RADAR_REFLECTIVITY, fine
 parser.add_argument("--mor",action='store_true',help='Load experiments run with Morrison Scheme')
 parser.add_argument("--multi_sound",action='store_true',help='Load experiment run with no profilers during DA')
 parser.add_argument("--no_prof",action='store_true',help='Load experiment run with no profilers during DA')
+parser.add_argument("--limit",action='store_true',help='Load experiment run with no profilers during DA')
 parser.add_argument("--coarse_wind_shift",action='store_true',help='Load experiment run on 3 km grid with u7/v7 wind shift')
 parser.add_argument("--coarse",action='store_true',help='Load experiment run on 3 km grid')
 parser.add_argument("--coarse_pert",action='store_true',help='Load experiment run on 3 km grid with random perturbations')
@@ -30,6 +31,11 @@ parser.add_argument("--reliability",action='store_true',help='Plot the reliabili
 parser.add_argument("--pmmean",action='store_true',help='Plot the reliability')
 parser.add_argument("--mean",action='store_true',help='Plot the reliability')
 parser.add_argument("--auc",action='store_true',help='Print AUC value')
+parser.add_argument("--save",action='store_true',help='Save a file with the ensemble information')
+parser.add_argument("--xmin",default=0,type=int,help='X minimum')
+parser.add_argument("--xmax",default=-1,type=int,help='X minimum')
+parser.add_argument("--ymin",default=0,type=int,help='X minimum')
+parser.add_argument("--ymax",default=-1,type=int,help='X minimum')
 arguments = parser.parse_args()
 
 platform_name = 'radar_%03d'%arguments.platform
@@ -60,41 +66,75 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
       #obs_path = '/work/jonathan.labriola/OSSE/obs/3km/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
       obs_path = '/work/jonathan.labriola/OSSE/QLCS/Nature_Runs/simobs/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
       radar = pickle.load(open(obs_path,"rb"))
-      obs = radar.obs[platform_name][arguments.var]['obs'][:,:-1,:-1]
-   else:
-      obs_path = '/work/jonathan.labriola/OSSE/QLCS/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
-      radar = pickle.load(open(obs_path,"rb"))
-      obs = np.amax(radar.obs[platform_name][arguments.var]['obs'][:,:,:],axis=0)
+      for platforms in range(1,arguments.nplat+1):
+         platform_name = 'radar_%03d'%platforms
+         print('Reading in ...',platform_name)
+         obs_tmp = radar.obs[platform_name][arguments.var]['obs'][:,arguments.ymin:arguments.ymax,arguments.xmin:arguments.xmax]
+         obs_tmp = np.where(np.isnan(obs_tmp),0,obs_tmp)
+         if arguments.tilt < 0:
+            obs_tmp = np.nanmax(obs_tmp,axis=0)
+         else:
+            obs_tmp = obs_tmp[arguments.tilt]
+         if platforms == 1:
+           obs = np.zeros(obs_tmp.shape)
+         obs = np.where(obs>obs_tmp,obs,obs_tmp)
 
-   #--- Select tilt
-   if arguments.tilt < 0:
-      obs = np.nanmax(obs,axis=0)
    else:
-      obs = obs[arguments.tilt] 
+      print('Find a new platform')      
+      #obs_path = '/work/jonathan.labriola/OSSE/QLCS/ens%03d/radar_obs_%s.pickle'%(ens,arguments.time)
+      #radar = pickle.load(open(obs_path,"rb"))
+      #obs = np.amax(radar.obs[platform_name][arguments.var]['obs'][:,:,:],axis=0)
+
 
    for mindex,mem in enumerate(range(1,arguments.nmem+1)):
       if arguments.no_prof:
          #fcst_path = '/scratch/jonathan.labriola/osse/%s/%s/ens%03d/mem%03d/radar_obs_%s.pickle'%(mp_tag,exp_tag,ens,mem,arguments.time)
-         fcst_path = '/scratch/jonathan.labriola/osse/500m_NR/NSSL_dry/ens_rdr/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+         if arguments.limit:
+            fcst_path = '/scratch/jonathan.labriola/osse/500m_NR/NSSL_fast4ms/ens_rdr/ens%03d_limit_poorcov/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+         else:
+            fcst_path = '/scratch/jonathan.labriola/osse/500m_NR/NSSL_fast4ms/ens_rdr/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
       else:
-         fcst_path = '/scratch/jonathan.labriola/osse/500m_NR/NSSL_dry/ens_all/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+         if arguments.limit:
+            fcst_path = '/scratch/jonathan.labriola/osse/500m_NR/NSSL_fast4ms/ens_all/ens%03d_limit_poorcov/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
+         else:
+            fcst_path = '/scratch/jonathan.labriola/osse/500m_NR/NSSL_fast4ms/ens_all/ens%03d/mem%03d/radar_obs_%s.pickle'%(ens,mem,arguments.time)
          #fcst_path = '/scratch/jonathan.labriola/osse/%s/%s/ens%03d/mem%03d/radar_obs_%s.pickle'%(mp_tag,exp_tag,ens,mem,arguments.time)
 
       print('Opening ...',fcst_path)
       radar = pickle.load(open(fcst_path,"rb"))
-      tmp_fcst = radar.obs[platform_name][arguments.var]['obs'][:,:,:]
 
-      if arguments.tilt < 0:
-         tmp_fcst = np.nanmax(tmp_fcst,axis=0)
-      else:
-         tmp_fcst = tmp_fcst[arguments.tilt]
+      #--- Get Grid Information (Observation and Forecasts Should be on the same grid
+      #--- radar_001 will always exist so just use this site
+      xh,yh = pydart.plotting.calc_grid_dims(radar.obs['radar_001'][arguments.var]['xloc'][0],radar.obs['radar_001'][arguments.var]['yloc'][0],oned=True,return_km=True)
+      xh = xh[arguments.xmin:arguments.xmax]
+      yh = yh[arguments.ymin:arguments.ymax]
 
-      if mindex == 0:
-         [nyy,nxx] = tmp_fcst.shape
-         fcst = np.zeros((arguments.nmem,nyy,nxx))
-         fcst[mindex] = tmp_fcst
+
+      for platforms in range(1,arguments.nplat+1):
+         platform_name = 'radar_%03d'%platforms
+         tmp_fcst_sngl = radar.obs[platform_name][arguments.var]['obs'][:,arguments.ymin:arguments.ymax,arguments.xmin:arguments.xmax]
+         tmp_fcst_sngl = np.where(np.isnan(tmp_fcst_sngl),0.,tmp_fcst_sngl)
+         #print('Reading in ...',platform_name)
+         if arguments.tilt < 0:
+            tmp_fcst_sngl = np.nanmax(tmp_fcst_sngl,axis=0)
+         else:
+            tmp_fcst_sngl = tmp_fcst_sngl[arguments.tilt]
+
+         if platforms == 1:
+            tmp_fcst = np.zeros(tmp_fcst_sngl.shape)
+         tmp_fcst = np.where(tmp_fcst>tmp_fcst_sngl,tmp_fcst,tmp_fcst_sngl)
+
+
+      if mindex == 0 :
+          [nyy,nxx] = tmp_fcst.shape
+          fcst = np.zeros((arguments.nmem,nyy,nxx))
+          fcst[mindex] = tmp_fcst
       else:
-         fcst[mindex] = tmp_fcst #radar.obs[platform_name][arguments.var]['obs'][arguments.tilt]
+          fcst[mindex] = tmp_fcst #radar.obs[platform_name][arguments.var]['obs'][arguments.tilt]
+
+
+
+
 
    if arguments.pmmean:  #---Probabilist matched mean
       var = pydart.verification.pmmean(fcst)
@@ -108,7 +148,7 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
 
    else:  #--- NMEP/Reliability/AUC
       var = pydart.verification.nmep(fcst,arguments.kernel,arguments.threshold)      
-      obs = pydart.verification.gen_buffer(obs,arguments.kernel,arguments.threshold,ones=False) 
+      obs = pydart.verification.gen_buffer(obs,arguments.kernel,arguments.threshold,ones=False)
       varname = 'NEP'
 
       if arguments.reliability:
@@ -146,11 +186,18 @@ for eindex,ens in enumerate(range(1,arguments.nen+1)):
    if arguments.reliability or arguments.auc:
       pass
    else:
-      outname ='%s_%s_ens%03d_%3.2f_%3.2f_%s_%s_%02dtilt.png'%(varname,arguments.time,ens,arguments.kernel,arguments.threshold,exp_tag,mp_tag,arguments.tilt) 
+      if arguments.limit:
+         outname ='%s_%s_ens%03d_%3.2f_%3.2f_%s_%s_%02dtilt_limit_poorcov.png'%(varname,arguments.time,ens,arguments.kernel,arguments.threshold,exp_tag,mp_tag,arguments.tilt)
+      else:
+         outname ='%s_%s_ens%03d_%3.2f_%3.2f_%s_%s_%02dtilt.png'%(varname,arguments.time,ens,arguments.kernel,arguments.threshold,exp_tag,mp_tag,arguments.tilt) 
       if arguments.pmmean or arguments.mean:
          pydart.plotting.rough_plot(var,varname,outname=outname)
+         if arguments.save:
+            np.savez('mean_%02d_%02s.png'%(arguments.tstart,arguments.tstop),field=var,varname=varname,xh=xh,yh=yh)
       else:
          pydart.plotting.rough_plot(var,varname,outname=outname,contour_var=obs,threshold=arguments.threshold)
+         if arguments.save:
+            np.savez('NMEP_%s_thresh%3.2f_kern%3.2f.npz'%(arguments.time,arguments.threshold,arguments.kernel),field=var,obs=obs,xh=xh,yh=yh)
 
       plt.clf()
 
@@ -167,7 +214,7 @@ if arguments.reliability:
    pydart.plotting.plotReliability(np.mean(sample_climo_ens,axis=0),np.mean(no_skill_ens,axis=0),np.mean(obs_frequency_ens,axis=0),
                                 np.mean(bin_centers_ens,axis=0),np.mean(bin_climo_ens,axis=0),linecolor = 'k',label='MEAN (%0.3f)'%(np.mean(bss_ens)),linewsith=5)
 
-plt.xlabel('Forecast Probability')
-plt.ylabel('Observed Frequency')
-plt.legend(prop={"size":10})
-plt.savefig('Reliability_%s_ensembles_%3.2f_%3.2f_%s_%s_%02d.png'%(arguments.time,arguments.kernel,arguments.threshold,mp_tag,exp_tag,arguments.tilt),dpi=300)
+   plt.xlabel('Forecast Probability')
+   plt.ylabel('Observed Frequency')
+   plt.legend(prop={"size":10})
+   plt.savefig('Reliability_%s_ensembles_%3.2f_%3.2f_%s_%s_%02d.png'%(arguments.time,arguments.kernel,arguments.threshold,mp_tag,exp_tag,arguments.tilt),dpi=300)
