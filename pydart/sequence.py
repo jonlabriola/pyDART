@@ -513,7 +513,7 @@ class read_sequence():
       conv_tindex  = []
 
       conv_obnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
-                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']
+                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_DEWPOINT']
    
      
       obcode = pydart.readvar.obcode() #--- Listed Observations
@@ -522,6 +522,7 @@ class read_sequence():
          if 'RADIOSONDE_V_WIND_COMPONENT'  in key: conv_vcode = obcode[key]
          if 'RADIOSONDE_TEMPERATURE'       in key: conv_tcode = obcode[key]
          if 'RADIOSONDE_SPECIFIC_HUMIDITY' in key: conv_qvcode = obcode[key]
+         if 'RADIOSONDE_DEWPOINT' in key: conv_qvcode = obcode[key]
       
       #--- Step 1: Get The Number of Observations For Each Profiler
       #--- Save the location where the u,v,T,qv observations can
@@ -574,6 +575,7 @@ class read_sequence():
                elif 'RADIOSONDE_V_WIND_COMPONENT'  in obname: ob_index = conv_vindex 
                elif 'RADIOSONDE_TEMPERATURE'       in obname: ob_index = conv_tindex
                elif 'RADIOSONDE_SPECIFIC_HUMIDITY' in obname: ob_index = conv_qvindex
+               elif 'RADIOSONDE_DEWPOINT' in obname: ob_index = conv_qvindex
                else: print("Unspecified Observation Type")
  
                for oindex in ob_index: #--- Loop over respective indicies for each observation type

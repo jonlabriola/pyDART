@@ -289,12 +289,13 @@ def cal_td(qv,p):
        p: atmospheric pressure (pa)
 
    returns
-      Td: dewpoint temperature (C)
+      Td: dewpoint temperature (K)
    """
    e=(qv/(qv+0.622))*p
    e = e/100. #--- Convert to hPa
-
-   return (5.42E3/((5.42E3/273.)-np.log(e/6.11))) - 273.15
+   #print('E = ',e)
+   #print('Td = ',(5.42E3/((5.42E3/273.)-np.log(e/6.11))) - 273.15)
+   return (5.42E3/((5.42E3/273.)-np.log(e/6.11))) #- 273.15
 
 
 def cal_rh(qv,p,pt,T=None):
