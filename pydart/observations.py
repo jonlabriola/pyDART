@@ -236,12 +236,23 @@ class obs_plat(object):
       self.obvr  = pydart.interp.cressman(fine_x,fine_y,fine_vr,self.obx,self.oby,roi)
 
 
-   def addob(self,obname,error,obtype=None,obdbz=False,obvr=False):
-      """   
+   def addob(self,obname,error,obtype=None,obdbz=False,obvr=False,seed=None):
+      """ 
+      Required Inputs:
+         obname - The name of the observation
+         error  - The observation error variance
+ 
+      Optional Inputs include:
+         obtype - The name of the observation platform (e.g., RADAR_REFLECTIVITY)
+         obdbz -  Working with Reflectivity Observations
+         obvr -   Working with Radial Velocity Observations
+         seed -   A seed to generate random perturbations 
+ 
       The saved variables in a nested dictionary array include: 
          obname   :  The name the the observations will be stored under 
                      (same for one type of platform)
-         obs      :  The observed values
+         truth    :  The observed values
+         obs      :  The observed values (with noise)
          xloc     :  The x-location of the observation
          yloc     :  The y-location of the observation
          zloc     :  The z-location of the observation
@@ -271,13 +282,28 @@ class obs_plat(object):
             print('Warning %s Does Not Exist... Setting to -1'%obname)
             obtype = -1
 
+      if seed is None:
+         pass
+      else:
+         np.random.seed(seed)
+
       #--- Saving Captured Observations (special excpetions for dbz/vr)
       if obdbz :
-         self.obs[self.plat_name][obname]['obs']     = self.obdbz
+         self.obs[self.plat_name][obname]['truth']   = self.obdbz
+         #--- Adding noise to observations
+         obnoise = numpy.random.normal(loc=0.0,scale=np.std(error),size=self.obdbz.shape)
+         noisy_obs = self.obdbz + obnoise
+         noisy_obs[noisy_obs<0] = 0
+         self.obs[self.plat_name][obname]['obs']     = noisy_obs 
       elif obvr:
-         self.obs[self.plat_name][obname]['obs']     = self.obvr
+         self.obs[self.plat_name][obname]['truth']   = self.obvr
+         obnoise = numpy.random.normal(loc=0.0,scale=np.std(error),size=self.obdbz.shape)
+         self.obs[self.plat_name][obname]['obs']     = self.obvr + obnoise
       else:
-         self.obs[self.plat_name][obname]['obs']     = self.ob
+         self.obs[self.plat_name][obname]['truth']     = self.ob
+         #--- Addinf Random Errors to Obs
+         obsnoise = np.random.normal(loc=0.0,scale=np.std(error))
+         self.obs[self.plat_name][obname]['obs']     = self.ob + obnoise
 
       self.obs[self.plat_name][obname]['xloc']    = self.obx
       self.obs[self.plat_name][obname]['yloc']    = self.oby

@@ -100,13 +100,13 @@ for rdr in range(0,nrdr): #--- Loop over State Variables
    #--- JDL Eventually Split Up - REFLECTIVITY/CLEAR AIR REFLECITIVITY
    varname = 'RADAR_REFLECTIVITY'
    dbzerr  = np.ones(radobs.obdbz.shape)*dbz_error   #--- REFLECTIVITY ERROR ASSUMPTIONS for DA
-   radobs.addob(varname, dbzerr, obdbz=True)
+   radobs.addob(varname, dbzerr, obdbz=True,seed=rdr)
 
    #pydart.plotting.rough_plot(radobs.obvr[0],'vr','superob_vr.png')
 
    varname = 'DOPPLER_RADIAL_VELOCITY'
    vrerr = np.ones(radobs.obvr.shape)*vr_error  #--- VELOCITY ERROR ASSUMPTIONS FOR DA
-   radobs.addob(varname, vrerr, obvr=True) 
+   radobs.addob(varname, vrerr, obvr=True,seed=rdr+100.) 
 
 output_path = '%s/radar_obs_%04d%02d%02d%02d%02d%02d.pickle'%(output_path,radobs.model['year'],radobs.model['month'],radobs.model['day'],radobs.model['hour'],radobs.model['minute'],radobs.model['second']))
 pickle.dump(radobs,open(output_path, "wb" ) )

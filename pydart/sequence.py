@@ -157,6 +157,7 @@ class create_sequence():
                 if obcode == 42: obcode = 46 #--- Switch REFL Code
 
                 #--- Flatten 3D Arrays 
+                truth  = tmp['truth'].flatten(order='F')
                 obs    = tmp['obs'].flatten(order='F')
                 flag   = np.where(np.isnan(obs),missing,0.)
                 xloc   = tmp['xloc'].flatten(order='F')
@@ -188,7 +189,7 @@ class create_sequence():
                    #--- Writing Out for Each Observations
                    self.txtfile.write(" OBS            %d\n"%(obnum+1))
                    self.txtfile.write(" %20.14E\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat
-                   self.txtfile.write(" %20.14E\n"%ob) #--- JDL One of these includes errors find out which one, and how to treat this
+                   self.txtfile.write(" %20.14E\n"%truth[oindex]) #--- JDL One of these includes errors find out which one, and how to treat this
                    self.txtfile.write(" %20.14E\n"%int(platform[-3:])) #--- Platform Number e.g., RADAR_002 = 002
                    #--- JDL This is done to avoid assimilating any observations on the edge boundaries (Results in a DART Error)
                    #--- This is currently hard coded for the QLCS Case 

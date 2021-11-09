@@ -141,7 +141,7 @@ if sim_pro:
          #--- Define error / DART observation code
          oberr =  np.ones(hgts.shape)*pro_err[oindex]
          obtype = observation_codes[obvar]
-         convob.addob(obvar,oberr)
+         convob.addob(obvar,oberr,seed=(ob*100)+oindex)
 
 #--- Simulate Surface Observations
 if sim_sfc:
