@@ -19,8 +19,10 @@ if arguments.radar:
       ntilt = 14
       #ny = 99
       #nx = 99
-      ny = 40
-      nx = 40
+      #ny = 40
+      #nx = 40
+      nx = 50
+      ny = 119
       radar = pydart.sequence.read_sequence(arguments.path,ntilt=ntilt,ny=ny,nx=nx,radar=True)
       pickle.dump(radar,open('radar_%s.pickle'%arguments.time, "wb" ))
 
@@ -47,7 +49,7 @@ if arguments.conv:
       conv = pydart.sequence.read_sequence(arguments.path,conv=True)
       pickle.dump(conv,open('conventional_%s.pickle'%arguments.time, "wb" ))
       varnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
-                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']
+                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_DEWPOINT']
       for plat_name in conv.obs.keys():
          print('The platform is ...',plat_name)
          for varname in varnames:
