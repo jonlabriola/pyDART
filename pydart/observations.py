@@ -119,7 +119,7 @@ class obs_plat(object):
          print('Other observations types are not accomodated yet')
 
 
-   def conv_operator(self,varname,cloud_base_limit=False,**kwargs):
+   def conv_operator(self,varname,cloud_base_limit=False,refl_limit=False,**kwargs):
       """
       Interpolate observations of the same type (profileof the same type (profiof the same type (profiler,sounding,surface))   
       Required arguments:
@@ -127,6 +127,7 @@ class obs_plat(object):
 
       Optional arguments:
          cloud_base_limit: Boolean to consider obs above cloud base.  Currently Only limits Temperature and Qv fields (AERI)
+         refl_limit: Boolean to consider obs where reflectivity is minimal (automatically called in cloud_base_limit called (e.g., DWL)
          xloc = array of x-location(s)  [nobs]
          yloc = array of y-location(s)  [nobs]
          zloc = array of z-location(s)  [nobs]
@@ -157,12 +158,12 @@ class obs_plat(object):
          xloc = self.obx[zindex]
          yloc = self.oby[zindex]
 
-         #--- Employ If You Don't Want to Include Observations Above Cloud Base Height
-         #--- If You Don't Use, Set Cloud Base Really High
-         #--- Also consider a reflectivity threshold (i.e., Z must be less than 5 dBZ)
-         if cloud_base_limit:
+         #----------------------------------#
+         # This is the thresholding section #
+         #----------------------------------#
 
-            #--- First check to make sure you are beneath the cloud base
+         #--- Keep Obs Beneath Cloud Base (If Desired)
+         if cloud_base_limit:
             cloud_conc = np.zeros(self.model['zh'].shape)
             for hindex, hgt in enumerate(self.model['zh']):
                if hindex > 0: cloud_conc[hindex] = pydart.interp.point_interp(self.model,'qc',xloc,yloc,hgt)
@@ -174,8 +175,11 @@ class obs_plat(object):
                   print(cld_base)
             else:
                cld_base = 1E100
-         
-            #--- Next Make Sure Reflectivity is Low
+          else:
+            cld_base = 1E100    
+ 
+          #--- Next Make Sure Reflectivity is Low (If Desired)
+          if refl_limit or cloud_base_limit: #--- Perfomed in refl_limit or cloud_base_limit called
             refl_vertical = np.zeros(self.model['zh'].shape)
             refl_threshold = 5.
             for hindex, hgt in enumerate(self.model['zh']):
@@ -188,9 +192,11 @@ class obs_plat(object):
             else:
                refl_base = 1E100   
          else:
-            #--- Don't Have A Reflectivity of Cloud Base Threshold
-            cld_base = 1E100    
             refl_base = 1E100
+
+         #----------------------------------#
+         #   End the thresholding section   #
+         #----------------------------------#
 
          if zloc > cld_base or zloc > refl_base:
             self.ob[zindex] = np.nan

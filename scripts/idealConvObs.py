@@ -60,28 +60,25 @@ if sim_sfc:
 
 if sim_pro:
 
-   xpro = [50000, 100000, 150000, 200000,
-           50000, 100000, 150000, 200000,
-           50000, 100000, 150000, 200000,
-           50000, 100000, 150000, 200000]    #--- The Location of the Radar (either Longitude [WRF] or Distance [CM1]
+   xpro = [150000, 450000, 550000,
+           150000, 450000, 550000,
+           150000, 450000, 550000 ] #--- The Location of the Profiler (either Longitude [WRF] or Distance [CM1]
 
-   ypro = [ 25000, 25000, 25000, 25000,
-            75000, 75000, 75000, 75000,
-           125000,125000,125000,125000,
-           175000,175000,175000,175000]      #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
+   ypro =  [50000,  50000,  50000,
+           150000, 150000, 150000,
+           250000, 250000, 250000] #--- The Location of the Profiler (either Longitude [WRF] or Distance [CM1]
 
-   zpro  = [0.0,0.0,0.0,0.0,
-            0.0,0.0,0.0,0.0,
-            0.0,0.0,0.0,0.0,
-            0.0,0.0,0.0,0.0]                 #--- The height of the radar station of sea level (JDL Working on This)
-   
+   zpro = [0, 0, 0,
+           0, 0, 0,
+           0, 0, 0] #--- The Location of the Profiler (either Longitude [WRF] or Distance [CM1]
+ 
    pro_obs  = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
-               'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY']
+               'RADIOSONDE_TEMPERATURE','RADIOSONDE_DEWPOINT']
 
-   pro_err = [2.0,2.0,4.0,0.0005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
+   pro_err = [1.75,1.75,1.5,2.0]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
    zmax_pro  = 3000.    #--- Maximum profiler height
-   zincr_pro = 250.     #--- Observation increment
+   zincr_pro = 100.     #--- Observation increment
 
 #--- Argparse provides file name
 parser = argparse.ArgumentParser()
@@ -136,7 +133,12 @@ if sim_pro:
          x_locations = np.ones(hgts.shape)*xpro[ob]
 
          #--- Get Observations for heights
-         convob.conv_operator(obvar,xloc=x_locations,yloc=y_locations,zloc=hgts)
+         #convob.conv_operator(obvar,xloc=x_locations,yloc=y_locations,zloc=hgts)
+         if obvar in ['RADIOSONDE_DEWPOINT','RADIOSONDE_TEMPERATURE']:
+            convob.conv_operator(obvar,cloud_base_limit=True,xloc=x_locations,yloc=y_locations,zloc=hgts)
+         else:
+            convob.conv_operator(obvar,cloud_base_limit=False,refl_limit=True,xloc=x_locations,yloc=y_locations,zloc=hgts)
+
 
          #--- Define error / DART observation code
          oberr =  np.ones(hgts.shape)*pro_err[oindex]
