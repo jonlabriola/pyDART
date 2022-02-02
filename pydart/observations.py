@@ -159,7 +159,10 @@ class obs_plat(object):
 
          #--- Employ If You Don't Want to Include Observations Above Cloud Base Height
          #--- If You Don't Use, Set Cloud Base Really High
+         #--- Also consider a reflectivity threshold (i.e., Z must be less than 5 dBZ)
          if cloud_base_limit:
+
+            #--- First check to make sure you are beneath the cloud base
             cloud_conc = np.zeros(self.model['zh'].shape)
             for hindex, hgt in enumerate(self.model['zh']):
                if hindex > 0: cloud_conc[hindex] = pydart.interp.point_interp(self.model,'qc',xloc,yloc,hgt)
@@ -171,23 +174,23 @@ class obs_plat(object):
                   print(cld_base)
             else:
                cld_base = 1E100
+         
+            #--- Next Make Sure Reflectivity is Low
+            refl_vertical = np.zeros(self.model['zh'].shape)
+            refl_threshold = 5.
+            for hindex, hgt in enumerate(self.model['zh']):
+               if hindex > 0: refl_vertical[hindex] = pydart.interp.point_interp(self.model,'dbz',xloc,yloc,hgt)
+            if np.nanmax(refl_vertical) > refl_threshold:
+               indices = np.where(refl_vertical>refl_threshold)
+               refl_base = np.nanmin(self.model['zh'][indices])
+               if zindex == 0:
+                  print("Don't Assimilate Observations Above ... ",refl_base)
+            else:
+               refl_base = 1E100   
          else:
+            #--- Don't Have A Reflectivity of Cloud Base Threshold
             cld_base = 1E100    
-
-
-         #--- Do Not Assimilate Observations that Occur Above Reflectivity Limit (0 dBZ)
-         refl_vertical = np.zeros(self.model['zh'].shape)
-         refl_threshold = 5.
-         for hindex, hgt in enumerate(self.model['zh']):
-            if hindex > 0: refl_vertical[hindex] = pydart.interp.point_interp(self.model,'dbz',xloc,yloc,hgt)
-         if np.nanmax(refl_vertical) > refl_threshold:
-            indices = np.where(refl_vertical>refl_threshold)
-            refl_base = np.nanmin(self.model['zh'][indices])
-            if zindex == 0:
-               print("Don't Assimilate Observations Above ... ",refl_base)
-         else:
-            refl_base = 1E100   
-
+            refl_base = 1E100
 
          if zloc > cld_base or zloc > refl_base:
             self.ob[zindex] = np.nan
@@ -291,7 +294,7 @@ class obs_plat(object):
          xloc     :  The x-location of the observation
          yloc     :  The y-location of the observation
          zloc     :  The z-location of the observation
-         error    :  The observation error
+         error    :  The observation error variance
          obtype   :  The DART code for the observation (int)
          missing_flag   : A flag to tell DART what observations to ignore (float)
 
@@ -325,24 +328,19 @@ class obs_plat(object):
       #--- Saving Captured Observations (special excpetions for dbz/vr)
       if obdbz :
          self.obs[self.plat_name][obname]['truth']   = self.obdbz
-         #--- Adding noise to observations
-         #print('OBS SHAPE = ',self.obdbz.shape)
-         #print('Error = ',error)
-         #print('ERROR SHAPE = ',error.shape)
-         #print('SCALE = ',np.sqrt(np.mean(error)))
+         #--- Adding random errors to observations
          obnoise = np.random.normal(loc=0.0,scale=np.sqrt(np.mean(error)),size=self.obdbz.shape)
-         #print('OBNOISE = ',obnoise.shape)
-         #print('OBNOISE STD = ',np.std(obnoise))
          noisy_obs = self.obdbz + obnoise
          noisy_obs[noisy_obs<0] = 0
          self.obs[self.plat_name][obname]['obs']     = noisy_obs 
       elif obvr:
          self.obs[self.plat_name][obname]['truth']   = self.obvr
+         #--- Add random errors to Obs
          obnoise = np.random.normal(loc=0.0,scale=np.sqrt(np.mean(error)),size=self.obvr.shape)
          self.obs[self.plat_name][obname]['obs']     = self.obvr + obnoise
       else:
          self.obs[self.plat_name][obname]['truth']     = self.ob
-         #--- Addinf Random Errors to Obs
+         #--- Add random rrrors to Obs
          obnoise = np.random.normal(loc=0.0,scale=np.sqrt(np.mean(error)),size=self.ob.shape)
          self.obs[self.plat_name][obname]['obs']     = self.ob + obnoise
 
