@@ -5,15 +5,15 @@ import numpy as np
 def get_colors(varname):
    cb_ticks = None
    if varname.lower() in ['dbz','radar_reflectivity', 'fine_z']:
-      #contours = np.arange(0,70.,1.)
-      #cb_ticks = np.arange(0,75,5.)
-      #colormap = plt.get_cmap("jet")
-      contours = np.arange(0.,75.,5.)
-      colormap = ['#FFFFFF', '#00FFFF', '#6495ED', '#0000CC', '#00FF00', '#00BB00',
-                   '#008800', '#FFFF00', '#FFDD00', '#DAA520', '#FF0000', '#B21111',
-                   '#990000', '#FF00FF', '#BB55DD']
-      cb_ticks = [10., 20., 30., 40., 50., 60., 70.]
-      colormap = matplotlib.colors.ListedColormap(colormap,cb_ticks)
+      contours = np.arange(0,70.,0.5)
+      cb_ticks = np.arange(0,75,5.)
+      colormap = plt.get_cmap("jet")
+      #contours = np.arange(0.,75.,5.)
+      #colormap = ['#FFFFFF', '#00FFFF', '#6495ED', '#0000CC', '#00FF00', '#00BB00',
+      #             '#008800', '#FFFF00', '#FFDD00', '#DAA520', '#FF0000', '#B21111',
+      #             '#990000', '#FF00FF', '#BB55DD']
+      #cb_ticks = [10., 20., 30., 40., 50., 60., 70.]
+      #colormap = matplotlib.colors.ListedColormap(colormap,cb_ticks)
    elif varname.lower() in ['vr','doppler_radial_velocity']:
       contours = np.arange(-25,26,1.0)
       colormap = plt.get_cmap("BrBG")
@@ -66,27 +66,38 @@ def twod_plot(var_class,varname,tilt=1,outname=None,copy_name=None):
    if copy_name is None:
       copy_name = 'obs'
 
-
+   [nz,ny,nx] = var_class['xloc'].shape 
    if np.isnan(np.amax(var_class['xloc'])):
       dx = np.nan
       j = 1
       while np.isnan(dx):
+        print('J = ',j)
+        if j > ny: break
         try:
            dx = np.nanmin(var_class['xloc'][tilt,j,1:] - var_class['xloc'][tilt,j,0:-1])/1000.
            j+=1
         except:
-           print('end of the line no more grid points')
+           j+=1
+           print('J = ',j)
+           #pass
+           #print('end of the line no more grid points')
       #dx = np.nanmin(var_class['xloc'][tilt,0,1:] - var_class['xloc'][tilt,1:,0:-1])
-      [nz,ny,nx] = var_class['xloc'].shape 
-      xh = np.arange(0,nx*dx,dx)
-      yh = np.arange(0,ny*dx,dx)
-      xx,yy = np.meshgrid(xh,yh)  
+      print('dx = ',dx)
+      if np.isnan(dx):
+         xh = np.arange(0,nx,1)
+         yh = np.arange(0,ny,1)
+         xx,yy = np.meshgrid(xh,yh)
+      else:
+         [nz,ny,nx] = var_class['xloc'].shape 
+         xh = np.arange(0,nx*dx,dx)
+         yh = np.arange(0,ny*dx,dx)
+         xx,yy = np.meshgrid(xh,yh)  
    else:
       xx,yy = np.meshgrid(var_class['xloc'][tilt,0,:]/1000.,var_class['yloc'][tilt,:,0]/1000.)
 
    for tindex in range(0,14):
-      print('Var max for tindex = ',np.nanmax(var_class[copy_name][tindex]))
- 
+      print('Var min for tindex = ',np.nanmin(var_class[copy_name][tindex]))
+      print('Var max for tindex = ',var_class[copy_name][tindex].shape) 
    print('Var max = ',np.nanmax(var_class[copy_name][tilt]))
    print('Var min = ',np.nanmin(var_class[copy_name][tilt]))
    CS = plt.pcolormesh(xx,yy,var_class[copy_name][tilt],cmap=cmap,norm=norm,alpha=1.0,shading='auto',edgecolors='none')

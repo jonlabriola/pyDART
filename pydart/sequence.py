@@ -158,7 +158,10 @@ class create_sequence():
 
                 #--- Flatten 3D Arrays 
                 truth  = tmp['truth'].flatten(order='F')
+                print('JDL truth max = ',np.nanmax(truth))
                 obs    = tmp['obs'].flatten(order='F')
+                print('JDL obs max = ',np.nanmax(obs))
+                print('Obcode = ',obcode)
                 flag   = np.where(np.isnan(obs),missing,0.)
                 xloc   = tmp['xloc'].flatten(order='F')
                 yloc   = tmp['yloc'].flatten(order='F')
@@ -172,10 +175,11 @@ class create_sequence():
                 #--- Remove NaN's
                 indices = np.where(np.isnan(obs))
                 flag   = np.where(np.isnan(obs),missing,0.)
-                obs[indices]  = missing
-                xloc[indices] = missing
-                yloc[indices] = missing
-                zloc[indices] = missing               
+                obs[indices]    = missing
+                truth[indices]  = missing
+                xloc[indices]   = missing
+                yloc[indices]   = missing
+                zloc[indices]   = missing               
 
                 if obcode == self.obs_codes['DOPPLER_RADIAL_VELOCITY']:
                    nyquist =  observation[platform]['nyquist']
@@ -587,7 +591,11 @@ class read_sequence():
                      if flag >= self.missing:
                         self.obs[plat_name][obname][copy][obcount]      = np.nan
                      else:
-                        self.obs[plat_name][obname][copy][obcount]      = float(conv_obs[oindex+cindex+1])
+                        self.obs[plat_name][obname][copy][obcount]      = float(conv_obs[oindex+cindex+1]) #--- JDL ORIG (Probably gets truth)
+                        # JDL THIS IS NOT THE LAST
+                        #self.obs[plat_name][obname][copy][obcount]      = float(conv_obs[oindex+cindex])
+
+
                      if cindex == 0:
                         if flag >= self.missing:
                            self.obs[plat_name][obname]['xloc'][obcount]    = np.nan

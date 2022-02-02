@@ -297,6 +297,13 @@ def cal_td(qv,p):
    #print('Td = ',(5.42E3/((5.42E3/273.)-np.log(e/6.11))) - 273.15)
    return (5.42E3/((5.42E3/273.)-np.log(e/6.11))) #- 273.15
 
+def cloud_base_height(qv,zh):
+   """
+   Return the cloud base height
+   if no clouds exist then make the height impossibly large
+   """
+
+
 
 def cal_rh(qv,p,pt,T=None):
    """

@@ -18,13 +18,13 @@ def read_cm1(path,time_str=None):
    try:
       #--- Restart File
       varnames = {'ua':'u','va':'v','wa':'w','dbz':'dbz','rho':'rho',
-                  'prs':'p','theta':'pt','qv':'qv','xh':'xh','yh':'yh','zh':'zh'}
+                  'prs':'p','theta':'pt','qv':'qv','qc':'qc','xh':'xh','yh':'yh','zh':'zh'}
       model = gen_model_output(path,varnames,time_str,rstfile=True)
       print('Working with a Restart File')
    except:
       #--- Forecast File 
       varnames = {'u':'u','v':'v','w':'w','dbz':'dbz','rho':'rho',
-                  'prs':'p','th':'pt','qv':'qv','xh':'xh','yh':'yh','zh':'zh'}
+                  'prs':'p','th':'pt','qv':'qv','qc':'qc','xh':'xh','yh':'yh','zh':'zh'}
       model = gen_model_output(path,varnames,time_str,rstfile=False)
       print('Working with a Forecast File')
 

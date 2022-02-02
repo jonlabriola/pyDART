@@ -115,18 +115,18 @@ class obs_plat(object):
       """
       if self.obtype == 'radar':
          self.obx,self.oby,self.obz,self.elv,self.az = pydart.interp.rad_obs_loc(self.model,self.xloc,self.yloc,self.zloc,self.tilts,rad_top = self.max_hgt)    
-         print('JDL OBZ MAX =',np.nanmax(self.obz)) 
       else:
          print('Other observations types are not accomodated yet')
 
 
-   def conv_operator(self,varname,**kwargs):
+   def conv_operator(self,varname,cloud_base_limit=False,**kwargs):
       """
       Interpolate observations of the same type (profileof the same type (profiof the same type (profiler,sounding,surface))   
       Required arguments:
          varname:  A string of the variable name   
 
       Optional arguments:
+         cloud_base_limit: Boolean to consider obs above cloud base.  Currently Only limits Temperature and Qv fields (AERI)
          xloc = array of x-location(s)  [nobs]
          yloc = array of y-location(s)  [nobs]
          zloc = array of z-location(s)  [nobs]
@@ -151,47 +151,82 @@ class obs_plat(object):
 
       self.ob = np.zeros((len(self.obz)))
 
+      
       #--- Loop Through observation locations
-
       for zindex,zloc in enumerate(self.obz):
          xloc = self.obx[zindex]
          yloc = self.oby[zindex]
 
-         if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M','DROPSONDE_U_WIND_COMPONENT']:
-            self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
-
-         elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M','DROPSONDE_V_WIND_COMPONENT']:
-            self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
-
-         elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M','DROPSONDE_TEMPERATURE']:
-            #self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
-            #self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
-            p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
-            self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
-
-         elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE','DROPSONDE_SURFACE_PRESSURE']:
-            self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-
-         elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M','DROPSONDE_SPECIFIC_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
-            #self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
-            #self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
-            qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
-            self.ob[zindex] =pydart.fwdop.qv_to_spechum(qv) 
-
-         elif varname.upper() in ['RADIOSONDE_DEWPOINT','DROPSONDE_DEWPOINT']: #--- JDL Does CM1 use qv or specific humidity?
-            qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
-            p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            self.ob[zindex] =pydart.fwdop.cal_td(qv,p)
-          
-         elif varname.upper() in ['RADIOSONDE_RELATIVE_HUMIDITY','DROPSONDE_RELATIVE_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
-            qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
-            p  = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
-            pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
-            self.ob[zindex] =pydart.fwdop.cal_rh(qv,p,pt)
-
+         #--- Employ If You Don't Want to Include Observations Above Cloud Base Height
+         #--- If You Don't Use, Set Cloud Base Really High
+         if cloud_base_limit:
+            cloud_conc = np.zeros(self.model['zh'].shape)
+            for hindex, hgt in enumerate(self.model['zh']):
+               if hindex > 0: cloud_conc[hindex] = pydart.interp.point_interp(self.model,'qc',xloc,yloc,hgt)
+            if np.nanmax(cloud_conc) > 1E-5:
+               indices = np.where(cloud_conc>1E-5)
+               cld_base = np.nanmin(self.model['zh'][indices])
+               if zindex == 0:
+                  print(cloud_conc[0:44])
+                  print(cld_base)
+            else:
+               cld_base = 1E100
          else:
-            print('Observation Unknown: %s'%varname)
+            cld_base = 1E100    
+
+
+         #--- Do Not Assimilate Observations that Occur Above Reflectivity Limit (0 dBZ)
+         refl_vertical = np.zeros(self.model['zh'].shape)
+         refl_threshold = 5.
+         for hindex, hgt in enumerate(self.model['zh']):
+            if hindex > 0: refl_vertical[hindex] = pydart.interp.point_interp(self.model,'dbz',xloc,yloc,hgt)
+         if np.nanmax(refl_vertical) > refl_threshold:
+            indices = np.where(refl_vertical>refl_threshold)
+            refl_base = np.nanmin(self.model['zh'][indices])
+            if zindex == 0:
+               print("Don't Assimilate Observations Above ... ",refl_base)
+         else:
+            refl_base = 1E100   
+
+
+         if zloc > cld_base or zloc > refl_base:
+            self.ob[zindex] = np.nan
+         else:
+            if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M','DROPSONDE_U_WIND_COMPONENT']:
+              self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
+
+            elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M','DROPSONDE_V_WIND_COMPONENT']:
+               self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
+
+            elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M','DROPSONDE_TEMPERATURE']:
+               #self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
+               #self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
+               p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+               pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+               self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
+
+            elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE','DROPSONDE_SURFACE_PRESSURE']:
+               self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+
+            elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M','DROPSONDE_SPECIFIC_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
+               #self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
+               #self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
+               qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+               self.ob[zindex] =pydart.fwdop.qv_to_spechum(qv) 
+
+            elif varname.upper() in ['RADIOSONDE_DEWPOINT','DROPSONDE_DEWPOINT']: #--- JDL Does CM1 use qv or specific humidity?
+               qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+               p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+               self.ob[zindex] =pydart.fwdop.cal_td(qv,p)
+          
+            elif varname.upper() in ['RADIOSONDE_RELATIVE_HUMIDITY','DROPSONDE_RELATIVE_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
+               qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+               p  = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+               pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
+               self.ob[zindex] =pydart.fwdop.cal_rh(qv,p,pt)
+
+            else:
+               print('Observation Unknown: %s'%varname)
 
 
    def radar_operator(self,dbz_only=False):
@@ -291,18 +326,24 @@ class obs_plat(object):
       if obdbz :
          self.obs[self.plat_name][obname]['truth']   = self.obdbz
          #--- Adding noise to observations
-         obnoise = numpy.random.normal(loc=0.0,scale=np.std(error),size=self.obdbz.shape)
+         #print('OBS SHAPE = ',self.obdbz.shape)
+         #print('Error = ',error)
+         #print('ERROR SHAPE = ',error.shape)
+         #print('SCALE = ',np.sqrt(np.mean(error)))
+         obnoise = np.random.normal(loc=0.0,scale=np.sqrt(np.mean(error)),size=self.obdbz.shape)
+         #print('OBNOISE = ',obnoise.shape)
+         #print('OBNOISE STD = ',np.std(obnoise))
          noisy_obs = self.obdbz + obnoise
          noisy_obs[noisy_obs<0] = 0
          self.obs[self.plat_name][obname]['obs']     = noisy_obs 
       elif obvr:
          self.obs[self.plat_name][obname]['truth']   = self.obvr
-         obnoise = numpy.random.normal(loc=0.0,scale=np.std(error),size=self.obdbz.shape)
+         obnoise = np.random.normal(loc=0.0,scale=np.sqrt(np.mean(error)),size=self.obvr.shape)
          self.obs[self.plat_name][obname]['obs']     = self.obvr + obnoise
       else:
          self.obs[self.plat_name][obname]['truth']     = self.ob
          #--- Addinf Random Errors to Obs
-         obsnoise = np.random.normal(loc=0.0,scale=np.std(error))
+         obnoise = np.random.normal(loc=0.0,scale=np.sqrt(np.mean(error)),size=self.ob.shape)
          self.obs[self.plat_name][obname]['obs']     = self.ob + obnoise
 
       self.obs[self.plat_name][obname]['xloc']    = self.obx
