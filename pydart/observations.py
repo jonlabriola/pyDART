@@ -175,11 +175,11 @@ class obs_plat(object):
                   print(cld_base)
             else:
                cld_base = 1E100
-          else:
+         else:
             cld_base = 1E100    
  
-          #--- Next Make Sure Reflectivity is Low (If Desired)
-          if refl_limit or cloud_base_limit: #--- Perfomed in refl_limit or cloud_base_limit called
+         #--- Next Make Sure Reflectivity is Low (If Desired)
+         if refl_limit or cloud_base_limit: #--- Perfomed in refl_limit or cloud_base_limit called
             refl_vertical = np.zeros(self.model['zh'].shape)
             refl_threshold = 5.
             for hindex, hgt in enumerate(self.model['zh']):

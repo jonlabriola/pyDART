@@ -21,8 +21,9 @@ if arguments.radar:
       #nx = 99
       #ny = 40
       #nx = 40
-      nx = 50
-      ny = 119
+      (14, 59, 119)
+      nx = 119 #50
+      ny = 59 #119
       radar = pydart.sequence.read_sequence(arguments.path,ntilt=ntilt,ny=ny,nx=nx,radar=True)
       pickle.dump(radar,open('radar_%s.pickle'%arguments.time, "wb" ))
 
