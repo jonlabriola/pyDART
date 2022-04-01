@@ -47,15 +47,11 @@ if sim_sfc:
            125000,125000,125000,125000,
            175000,175000,175000,175000]      #--- The Location of the Radar (either Latitude  [WRF] or Distance [CM1]
 
-   zsfc  = [0.0,0.0,0.0,0.0,
-            0.0,0.0,0.0,0.0,
-            0.0,0.0,0.0,0.0,
-            0.0,0.0,0.0,0.0]                 #--- The height of the radar station of sea level (JDL Working on This)
+   zsfc = np.zeros((xsfc.shape[0]))
 
-   sfc_obs  = ['TEMPERATURE_2M','U_WIND_10M','V_WIND_10M',
-               'SURFACE_PRESSURE','SPECIFIC_HUMIDITY_2M']    #--- Evaluated Sounding Observations
+   sfc_obs  = ['U_WIND_10M','V_WIND_10M','TEMPERATURE_2M','DEWPOINT_2_METER']    #--- Evaluated Sounding Observations
+   sfc_err = [1.75,1.75,1.75,2.0]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
-   sfc_err = [2.0,2.0,4.0,1.0,0.005]  #--- Observation Errors for Each Type (Can Grow More Complex With Time)
 
 
 if sim_pro:
@@ -135,9 +131,9 @@ if sim_pro:
          #--- Get Observations for heights
          #convob.conv_operator(obvar,xloc=x_locations,yloc=y_locations,zloc=hgts)
          if obvar in ['RADIOSONDE_DEWPOINT','RADIOSONDE_TEMPERATURE']:
-            convob.conv_operator(obvar,cloud_base_limit=True,xloc=x_locations,yloc=y_locations,zloc=hgts)
+            convob.conv_operator(obvar,refl_limit=True,cloud_base_limit=True,xloc=x_locations,yloc=y_locations,zloc=hgts)
          else:
-            convob.conv_operator(obvar,cloud_base_limit=False,refl_limit=True,xloc=x_locations,yloc=y_locations,zloc=hgts)
+            convob.conv_operator(obvar,irefl_limie=True,cloud_base_limit=False,xloc=x_locations,yloc=y_locations,zloc=hgts)
 
 
          #--- Define error / DART observation code
@@ -151,38 +147,26 @@ if sim_sfc:
    for ob in range(0,nobs):
       #---STEP 3:  Define Sounding Information
       platform_name = 'sfc_%03d'%(ob+1)
-      convob.estab_platform(platform_name,xsfc[ob],ysfc[ob],zsfc[ob])
+      convob.estab_platform(platform_name,xsfc[ob],ysfc[ob],zsfc[0])
       #--- Loop over the sounding profiles for each observation
       for oindex,obvar in enumerate(sfc_obs):
-
-         #--- Define Height above ground 
-         if obvar in ['TEMPERATURE_2M','SPECIFIC_HUMIDITY_2M']:
-            if (2.+convob.zloc) > min_hgt:
-               hgt = [2.+convob.zloc]
-            else:  
-               hgt = [min_hgt]
-
-         elif obvar in ['SURFACE_PRESSURE']:
-            if convob.zloc > min_hgt:
-               hgt = [convob.zloc]
-            else:
-               hgt = [min_hgt]
- 
-         elif obvar in ['U_WIND_10M','V_WIND_10M']:
-            if (10.+convob.zloc) > min_hgt:
-               hgt = [10.+convob.zloc]
-            else:
-               hgt = [min_hgt]
+         #--- Define Height above ground (Observation Specific
+         hgts = [convob.zloc]
          y_locations = np.ones(hgts.shape)*ysfc[ob]
          x_locations = np.ones(hgts.shape)*xsfc[ob]
+         #if obvar in ['TEMPERATURE_2M','SPECIFIC_HUMIDITY_2M']:
+         #   zob = [2.]
+         #elif obvar in ['SURFACE_PRESSURE']: 
+         #   zob = [0.]
+         #elif obvar in ['U_WIND_10M','V_WIND_10M']: 
+         #   zob = [10.]
 
          #--- Get Observations
-         convob.conv_operator(obvar,xloc=x_locations,yloc=y_locations,zloc=hgts)
-
+         convob.conv_operator(obvar,xloc=x_locations,yloc=y_locations,zloc=zob[0])
          #--- Define error / obcode
          oberr =  np.ones(hgts.shape)*sfc_err[oindex]
          #obtype = observation_codes[obvar]
-         convob.addob(obvar,oberr)  
+         convob.addob(obvar,oberr,seed=(ob*1E4)+oindex)  
 
 #--- Short Snippet to Plot out Variables
 #print('The date is ...',convob.obs[ob]['date'])

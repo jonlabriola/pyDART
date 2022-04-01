@@ -153,8 +153,8 @@ class create_sequence():
 
                 #--- JDL Hard Code to account for changes in ob code
                 #--- between DART versions
-                if obcode == 41: obcode = 45 #--- Switch Vr Code
-                if obcode == 42: obcode = 46 #--- Switch REFL Code
+                #if obcode == 41: obcode = 45 #--- Switch Vr Code
+                #if obcode == 42: obcode = 46 #--- Switch REFL Code
 
                 #--- Flatten 3D Arrays 
                 truth  = tmp['truth'].flatten(order='F')
@@ -162,6 +162,8 @@ class create_sequence():
                 obs    = tmp['obs'].flatten(order='F')
                 print('JDL obs max = ',np.nanmax(obs))
                 print('Obcode = ',obcode)
+                print('XLOC = ',tmp['xloc'].flatten(order='F'))
+                print('YLOC = ',tmp['yloc'].flatten(order='F'))
                 flag   = np.where(np.isnan(obs),missing,0.)
                 xloc   = tmp['xloc'].flatten(order='F')
                 yloc   = tmp['yloc'].flatten(order='F')

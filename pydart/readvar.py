@@ -18,13 +18,15 @@ def read_cm1(path,time_str=None):
    try:
       #--- Restart File
       varnames = {'ua':'u','va':'v','wa':'w','dbz':'dbz','rho':'rho',
-                  'prs':'p','theta':'pt','qv':'qv','qc':'qc','xh':'xh','yh':'yh','zh':'zh'}
+                  'prs':'p','theta':'pt','qv':'qv','qc':'qc','xh':'xh','yh':'yh','zh':'zh',
+                  'u10':'u10','v10':'v10','t2':'t2','q2':'q2','psfc':'psfc'}
       model = gen_model_output(path,varnames,time_str,rstfile=True)
       print('Working with a Restart File')
    except:
       #--- Forecast File 
       varnames = {'u':'u','v':'v','w':'w','dbz':'dbz','rho':'rho',
-                  'prs':'p','th':'pt','qv':'qv','qc':'qc','xh':'xh','yh':'yh','zh':'zh'}
+                  'prs':'p','th':'pt','qv':'qv','qc':'qc','xh':'xh','yh':'yh','zh':'zh',
+                  'u10':'u10','v10':'v10','t2':'t2','q2':'q2','psfc':'psfc'}
       model = gen_model_output(path,varnames,time_str,rstfile=False)
       print('Working with a Forecast File')
 
@@ -72,6 +74,37 @@ def gen_model_output(path,varnames,time_str,rstfile):
             var_tmp = (var_tmp[0:-1] + var_tmp[1:])/2.
          if var in ['zh']:
             if var_tmp.ndim > 1: var_tmp = var_tmp[:,0,0] # Remove Extra Dimensions added by DART
+
+      elif var in ['u10','v10','t2','q2','psfc']: #--- Surface Field Estimated by CM1
+         print('JDL VAR = ',var)
+         try:
+            var_tmp = np.squeeze(dumpfile.variables[var][0,:,:])
+            var_tmp = pydart.interp.shift_grid(var_tmp,1) #--- stagger x-axis
+            var_tmp = pydart.interp.shift_grid(var_tmp,0) #--- stagger x-axis
+         except:
+           print('Working with a fake %s'%var)
+           if var in ['u10']:
+              try: 
+                 var_tmp = np.squeeze(dumpfile.variables['ua'][0,0,:,1:-1])
+              except:
+                 var_tmp = np.squeeze(dumpfile.variables['u'][0,0,:,1:-1])
+              var_tmp = pydart.interp.shift_grid(var_tmp,0)
+           elif var in ['v10']:
+              try: 
+                 var_tmp = np.squeeze(dumpfile.variables['va'][0,0,1:-1,:])
+              except:
+                 var_tmp = np.squeeze(dumpfile.variables['v'][0,0,1:-1,:])
+              var_tmp = pydart.interp.shift_grid(var_tmp,1)
+           else: #--- Regular grid Objects
+             if var in ['q2']:
+                varname = 'qv'
+             elif var in ['psfc']: # t2
+                varname = 'prs'
+             elif var in ['t2']:
+                varname = 'air_temp'
+             var_tmp = np.squeeze(dumpfile.variables[varname][0,0,:,:])
+             var_tmp = pydart.interp.shift_grid(var_tmp,1) #--- stagger x-axis
+             var_tmp = pydart.interp.shift_grid(var_tmp,0) #--- stagger x-axis
       else:
          #--- We want all grids to be staggered in the horizontal
          #--- This makes for easy forecast verification when switching between grids

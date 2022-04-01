@@ -152,7 +152,7 @@ class obs_plat(object):
 
       self.ob = np.zeros((len(self.obz)))
 
-      
+
       #--- Loop Through observation locations
       for zindex,zloc in enumerate(self.obz):
          xloc = self.obx[zindex]
@@ -177,7 +177,7 @@ class obs_plat(object):
                cld_base = 1E100
          else:
             cld_base = 1E100    
- 
+
          #--- Next Make Sure Reflectivity is Low (If Desired)
          if refl_limit or cloud_base_limit: #--- Perfomed in refl_limit or cloud_base_limit called
             refl_vertical = np.zeros(self.model['zh'].shape)
@@ -201,34 +201,47 @@ class obs_plat(object):
          if zloc > cld_base or zloc > refl_base:
             self.ob[zindex] = np.nan
          else:
-            if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','U_WIND_10M','DROPSONDE_U_WIND_COMPONENT']:
-              self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
+            if varname.upper() in ['RADIOSONDE_U_WIND_COMPONENT','DROPSONDE_U_WIND_COMPONENT']:
+               self.ob[zindex] = pydart.interp.point_interp(self.model,'u',xloc,yloc,zloc)
 
-            elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','V_WIND_10M','DROPSONDE_V_WIND_COMPONENT']:
+            elif varname.upper() in ['U_WIND_10M']:
+               self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'u10',xloc,yloc)             
+
+            elif varname.upper() in ['RADIOSONDE_V_WIND_COMPONENT','DROPSONDE_V_WIND_COMPONENT']:
                self.ob[zindex] = pydart.interp.point_interp(self.model,'v',xloc,yloc,zloc)    
 
-            elif varname.upper() in ['RADIOSONDE_TEMPERATURE','TEMPERATURE_2M','DROPSONDE_TEMPERATURE']:
-               #self.model['T'] = pydart.fwdop.theta_to_temp(self.model['pt'],self.model['p'])
-               #self.ob[zindex] = pydart.interp.point_interp(self.model,'T',xloc,yloc,zloc)
+            elif varname.upper() in ['V_WIND_10M']:
+               self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'v10',xloc,yloc)             
+               
+            elif varname.upper() in ['RADIOSONDE_TEMPERATURE','DROPSONDE_TEMPERATURE']:
                p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
                pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
                self.ob[zindex] = pydart.fwdop.theta_to_temp(pt,p)
 
-            elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE','DROPSONDE_SURFACE_PRESSURE']:
-               self.ob[zindex] = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
+            elif varname.upper() in ['TEMPERATURE_2M']:
+               self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'t2',xloc,yloc)             
 
-            elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','SPECIFIC_HUMIDITY_2M','DROPSONDE_SPECIFIC_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
-               #self.model['hum'] = pydart.fwdop.qv_to_spechum(self.model['qv'])
-               #self.ob[zindex] = pydart.interp.point_interp(self.model,'hum',xloc,yloc,zloc)
+            elif varname.upper() in ['RADIOSONDE_SURFACE_PRESSURE','SURFACE_PRESSURE','DROPSONDE_SURFACE_PRESSURE']:
+               self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'psfc',xloc,yloc)             
+
+            elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','DROPSONDE_SPECIFIC_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
                qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
                self.ob[zindex] =pydart.fwdop.qv_to_spechum(qv) 
 
-            elif varname.upper() in ['RADIOSONDE_DEWPOINT','DROPSONDE_DEWPOINT']: #--- JDL Does CM1 use qv or specific humidity?
+            elif varname.upper() in ['SPECIFIC_HUMIDITY_2M']:
+               self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'q2',xloc,yloc)             
+
+            elif varname.upper() in ['RADIOSONDE_DEWPOINT','DROPSONDE_DEWPOINT']: 
                qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
                p = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
                self.ob[zindex] =pydart.fwdop.cal_td(qv,p)
           
-            elif varname.upper() in ['RADIOSONDE_RELATIVE_HUMIDITY','DROPSONDE_RELATIVE_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
+            elif varname.upper() in ['DEWPOINT_2_METER']:
+               qv = pydart.interp.point_interp_2d(self.model,'q2',xloc,yloc)             
+               p = pydart.interp.point_interp_2d(self.model,'psfc',xloc,yloc)             
+               self.ob[zindex] =pydart.fwdop.cal_td(qv,p)
+
+            elif varname.upper() in ['RADIOSONDE_RELATIVE_HUMIDITY','DROPSONDE_RELATIVE_HUMIDITY']: 
                qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
                p  = pydart.interp.point_interp(self.model,'p',xloc,yloc,zloc)
                pt = pydart.interp.point_interp(self.model,'pt',xloc,yloc,zloc)
@@ -318,6 +331,7 @@ class obs_plat(object):
       """
       #--- Saving the observation platform location
       self.obs[self.plat_name][obname]  = {}
+      print('JDL obname = ',obname)
       if obtype is None:
          obcode = pydart.readvar.obcode()
          try:
@@ -325,6 +339,7 @@ class obs_plat(object):
          except:
             print('Warning %s Does Not Exist... Setting to -1'%obname)
             obtype = -1
+      print('JDL obtype = ',obtype)
 
       if seed is None:
          pass

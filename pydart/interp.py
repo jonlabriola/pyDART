@@ -345,3 +345,29 @@ def point_interp(fcst,varname,xloc,yloc,zloc):
 
     return point_ob
 
+#===============================================================================
+
+def point_interp_2d(fcst,varname,xloc,yloc):
+    """
+    Interpolate all 2D variables to a single point in a two-dimensional array
+
+    Return:
+      A dictionary contain the point values for interpolations
+    """
+    #--- Look at three-dimensional variables
+    point_ob = {}
+
+    #--- Selecting the Data Points to Interp Between
+    i1, i2, dx1, dx2, dx = interp_wghts(xloc, fcst['xh'])
+    j1, j2, dy1, dy2, dy = interp_wghts(yloc, fcst['yh'])
+
+    if i1 < 0 or j1 < 0: #--- Observation of the grid 
+       point_ob = np.nan
+    else:
+       q1   = dx1*fcst[varname][j1,i1] + dx2*fcst[varname][j1,i2]
+       q2   = dx1*fcst[varname][j2,i1] + dx2*fcst[varname][j2,i2]
+       point_ob   = (dy1*q1 + dy2*q2) / ( dx*dy )
+
+    return point_ob
+
+
