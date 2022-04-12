@@ -76,11 +76,17 @@ def gen_model_output(path,varnames,time_str,rstfile):
             if var_tmp.ndim > 1: var_tmp = var_tmp[:,0,0] # Remove Extra Dimensions added by DART
 
       elif var in ['u10','v10','t2','q2','psfc']: #--- Surface Field Estimated by CM1
-         print('JDL VAR = ',var)
+         print('HEY JDL!!!!!!!!!!!!!')
          try:
             var_tmp = np.squeeze(dumpfile.variables[var][0,:,:])
             var_tmp = pydart.interp.shift_grid(var_tmp,1) #--- stagger x-axis
             var_tmp = pydart.interp.shift_grid(var_tmp,0) #--- stagger x-axis
+            if var in ['q2']: #--- Covnvert Specific Humidity to Mixing Ratio
+               print('JDL converting Q2 to QV2')
+               print('Before = ',np.nanmean(var_tmp))
+               var_tmp = var_tmp/(1.- var_tmp)
+               print('After = ',np.nanmean(var_tmp))
+             
          except:
            print('Working with a fake %s'%var)
            if var in ['u10']:

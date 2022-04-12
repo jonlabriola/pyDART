@@ -291,12 +291,16 @@ def cal_td(qv,p):
    returns
       Td: dewpoint temperature (K)
    """
-   e=(qv/(qv+0.622))*p
-   e = e/100. #--- Convert to hPa
-   #print('E = ',e)
-   #print('Td = ',(5.42E3/((5.42E3/273.)-np.log(e/6.11))) - 273.15)
-   return (5.42E3/((5.42E3/273.)-np.log(e/6.11))) #- 273.15
+  
+   #--- JDL ORIG
+   #e=(qv/(qv+0.622))*p
+   #e = e/100. #--- Convert to hPa
+   #return (5.42E3/((5.42E3/273.)-np.log(e/6.11))) #- 273.15
 
+   p_mb = p*0.01 #--- mb
+   e_mb = qv * p_mb / (0.622+qv)
+   log_term = np.log(e_mb / 6.112)
+   return(273.15+(243.5 * log_term / (17.67 - log_term)))
 
 def cal_rh(qv,p,pt,T=None):
    """

@@ -226,10 +226,13 @@ class obs_plat(object):
 
             elif varname.upper() in ['RADIOSONDE_SPECIFIC_HUMIDITY','DROPSONDE_SPECIFIC_HUMIDITY']: #--- JDL Does CM1 use qv or specific humidity?
                qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
+               qv = qv/float(1.+qv)
                self.ob[zindex] =pydart.fwdop.qv_to_spechum(qv) 
 
             elif varname.upper() in ['SPECIFIC_HUMIDITY_2M']:
-               self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'q2',xloc,yloc)             
+               qv = pydart.interp.point_interp_2d(self.model,'q2',xloc,yloc)             
+               self.ob[zindex] = qv/float(1.+qv)
+               #self.ob[zindex] = pydart.interp.point_interp_2d(self.model,'q2',xloc,yloc)             
 
             elif varname.upper() in ['RADIOSONDE_DEWPOINT','DROPSONDE_DEWPOINT']: 
                qv = pydart.interp.point_interp(self.model,'qv',xloc,yloc,zloc)
