@@ -49,11 +49,16 @@ if arguments.conv:
    else:
       conv = pydart.sequence.read_sequence(arguments.path,conv=True)
       pickle.dump(conv,open('conventional_%s.pickle'%arguments.time, "wb" ))
+
+for plat_name in conv.obs.keys():
+   print('The platform is ...',plat_name)
+   if 'pro' in plat_name:
       varnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
-                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_DEWPOINT']
-      for plat_name in conv.obs.keys():
-         print('The platform is ...',plat_name)
-         for varname in varnames:
-            plotvar = conv.obs[plat_name][varname]
-            for key in plotvar.keys():
-               print('Working on key %s'%key)
+                        'RADIOSONDE_TEMPERATURE','RADIOSONDE_DEWPOINT']
+   elif 'sfc' in plat_name:
+      varnames = ['TEMPERATURE_2M','DEWPOINT_2_METER','U_WIND_10M','V_WIND_10M']
+   for varname in varnames:
+      plotvar = conv.obs[plat_name][varname]
+      if 'sfc' in plat_name: print('varname = ',varname)
+   #   for key in plotvar.keys():
+   #      print('Working on key %s'%key)

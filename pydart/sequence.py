@@ -265,7 +265,10 @@ class read_sequence():
          else:
             self.reshape_rad_obs(ntilt,ny,nx)
       elif conv:
+        print('Reading Profilers')
         self.read_conv_obs(filepath)
+        print('Reading Surface')
+        self.read_conv_obs(filepath,sfc=True) #--- Read in Surface Types
       else:
         print('You are reading in neither radar nor conventional observations')
 
@@ -493,12 +496,13 @@ class read_sequence():
                for reshape_key in self.obs[platform][obtype].keys():
                   self.obs[platform][obtype][reshape_key] = np.reshape(self.obs[platform][obtype][reshape_key],(ntilt,ny,nx),order='F')
 
-   def read_conv_obs(self,filepath):
+   def read_conv_obs(self,filepath,sfc=False):
       """
       A function that is used to read in conventional observations saved at different heights
 
       Required arguments:
          filepath - The pathways to the sequence file that is to be read in
+         sfc - Read in Surface Obs Instead of Profilers
       """  
       #--- Read in the sequence file
       #--- Define the important indices for each observation
@@ -513,30 +517,56 @@ class read_sequence():
 
       nobs = 0
       nplat = 1
-      nobs_conv = []
-      conv_uindex  = []
-      conv_vindex  = []
-      conv_qvindex = []
-      conv_tindex  = []
+      
+      nobs_conv     = []
+      if sfc:
+         conv_obnames = ['U_WIND_10M','V_WIND_10M','TEMPERATURE_2M','DEWPOINT_2_METER']
+      else:
+         conv_obnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
+                    'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_DEWPOINT']
 
-      conv_obnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
-                 'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_DEWPOINT']
+
+      conv_uindex   = []
+      conv_vindex   = []
+      conv_qvindex  = []
+      conv_tindex   = []
+      #conv_u10index = [] #--- sfc
+      #conv_v10index = [] #--- sfc
+      #conv_t2index  = [] #--- sfc
+      #conv_td2index = [] #--- sfc
+
+      #conv_obnames = ['RADIOSONDE_U_WIND_COMPONENT','RADIOSONDE_V_WIND_COMPONENT',
+      #           'RADIOSONDE_TEMPERATURE','RADIOSONDE_SPECIFIC_HUMIDITY','RADIOSONDE_DEWPOINT',
+      #            'U_WIND_10M','V_WIND_10M','TEMPERATURE_2M','DEWPOINT_2_METER']
    
      
       obcode = pydart.readvar.obcode() #--- Listed Observations
       for key in obcode.keys():
-         if 'RADIOSONDE_U_WIND_COMPONENT'  in key: conv_ucode = obcode[key]
-         if 'RADIOSONDE_V_WIND_COMPONENT'  in key: conv_vcode = obcode[key]
-         if 'RADIOSONDE_TEMPERATURE'       in key: conv_tcode = obcode[key]
-         if 'RADIOSONDE_SPECIFIC_HUMIDITY' in key: conv_qvcode = obcode[key]
-         if 'RADIOSONDE_DEWPOINT' in key: conv_qvcode = obcode[key]
-      
+         if sfc:
+            if 'U_WIND_10M'                   in key: conv_ucode = obcode[key]       
+            if 'V_WIND_10M'                   in key: conv_vcode = obcode[key]       
+            if 'TEMPERATURE_2M'               in key: conv_tcode = obcode[key]       
+            if 'DEWPOINT_2_METER'             in key: conv_qvcode = obcode[key]       
+         else:
+            if 'RADIOSONDE_U_WIND_COMPONENT'  in key: conv_ucode = obcode[key]
+            if 'RADIOSONDE_V_WIND_COMPONENT'  in key: conv_vcode = obcode[key]
+            if 'RADIOSONDE_TEMPERATURE'       in key: conv_tcode = obcode[key]
+            if 'RADIOSONDE_SPECIFIC_HUMIDITY' in key: conv_qvcode = obcode[key]
+            if 'RADIOSONDE_DEWPOINT'          in key: conv_qvcode = obcode[key]
+
+
+      print('JDL UCODE = ',conv_ucode)
+      print('JDL VCODE = ',conv_vcode)
+      print('JDL TCODE = ',conv_tcode)
+      print('JDL QVCODE = ',conv_qvcode)
       #--- Step 1: Get The Number of Observations For Each Profiler
       #--- Save the location where the u,v,T,qv observations can
       #--- be found
    
       #--- nobs_conv = The number of either dbz / vr obs per radar
       #--- conv_(u,v,qv,t)index = Indices where radar obs start
+
+      #--- Loop through observations for the respective type
       for index in self.obindex:
          platform = float(conv_obs[index+plat_index].split()[0])
          if int(conv_obs[kindex+index]) == conv_ucode:
@@ -553,7 +583,9 @@ class read_sequence():
             conv_qvindex.append(index)
          elif int(conv_obs[kindex+index]) == conv_tcode:
             conv_tindex.append(index)
-      
+   
+
+
       #--- Add Final Radar Platform Info
       nobs_conv.append(nobs)
 
@@ -561,7 +593,10 @@ class read_sequence():
       #--- Step 2: Create the Radar Dictionary
       #--- First Loop over Each Radar
       for nconv,nob_per_conv in enumerate(nobs_conv):
-         plat_name = 'pro_%03d'%(nconv+1)
+         if sfc:
+            plat_name = 'sfc_%03d'%(nconv+1)
+         else:
+            plat_name = 'pro_%03d'%(nconv+1)
          self.obs[plat_name]={}
          #--------------------------#
          #--- LOOP OVER CONV OBS ---#
@@ -578,11 +613,20 @@ class read_sequence():
                self.obs[plat_name][obname][copy] = np.zeros((nob_per_conv)) 
                obcount = 0
              
+               #--- U - Wind
                if 'RADIOSONDE_U_WIND_COMPONENT'    in obname: ob_index = conv_uindex
+               elif 'U_WIND_10M'                   in obname: ob_index = conv_uindex
+               #--- V - Wind
                elif 'RADIOSONDE_V_WIND_COMPONENT'  in obname: ob_index = conv_vindex 
+               elif 'V_WIND_10M'                   in obname: ob_index = conv_vindex
+               #--- Temperature
                elif 'RADIOSONDE_TEMPERATURE'       in obname: ob_index = conv_tindex
+               elif 'TEMPERATURE_2M'               in obname: ob_index = conv_tindex
+               #--- Moisture
                elif 'RADIOSONDE_SPECIFIC_HUMIDITY' in obname: ob_index = conv_qvindex
                elif 'RADIOSONDE_DEWPOINT' in obname: ob_index = conv_qvindex
+               elif 'DEWPOINT_2_METER' in obname: ob_index = conv_qvindex
+
                else: print("Unspecified Observation Type")
  
                for oindex in ob_index: #--- Loop over respective indicies for each observation type
